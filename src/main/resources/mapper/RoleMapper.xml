@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.pmp.hrsrc.mapper.RoleMapper">
+    <select id="selectAll"  resultType="com.pmp.hrsrc.entity.Role">
+        select * from t_role  ;
+    </select>
+    <select id="findMaxId" resultType="int">
+        select ifnull(max(id),0)+1 from t_role ;
+    </select>
+    <insert id="insertRole" parameterType="com.pmp.hrsrc.entity.Role" >
+        insert into t_role(id,rname) values(#{id},#{rname})
+    </insert>
+    <update id ="updateRole" parameterType="com.pmp.hrsrc.entity.Role">
+        update t_role set rname=#{rname} where id=#{id}
+    </update>
+    <delete id="deleteRole" parameterType="int">
+        delete from t_role where id=#{id}
+    </delete>
+</mapper>

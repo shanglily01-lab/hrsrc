@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-cn" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>员工守则清单</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .handbook-container {
+            padding: 20px;
+        }
+
+        .handbook-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .handbook-header {
+            background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .handbook-title {
+            font-size: 1.2rem;
+            font-weight: 500;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .handbook-title i {
+            font-size: 1.4rem;
+        }
+
+        .btn-add {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-add:hover {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .handbook-body {
+            padding: 20px;
+        }
+
+        .handbook-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .handbook-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .handbook-item:last-child {
+            border-bottom: none;
+        }
+
+        .handbook-item:hover {
+            background: #f8f9fa;
+        }
+
+        .handbook-content {
+            flex: 1;
+        }
+
+        .handbook-text {
+            margin: 0;
+            color: #495057;
+        }
+
+        .handbook-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-action {
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-edit {
+            background: #4b6cb7;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #5a7bc7;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #e4606d;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .section-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-left: 10px;
+        }
+
+        .badge-work { background: #e3f2fd; color: #1976d2; }
+        .badge-behavior { background: #e8f5e9; color: #2e7d32; }
+        .badge-safety { background: #fff3e0; color: #f57c00; }
+        .badge-confidential { background: #fce4ec; color: #c2185b; }
+        .badge-reward { background: #f3e5f5; color: #7b1fa2; }
+        .badge-punish { background: #ffebee; color: #c62828; }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+        }
+    </style>
+</head>
+<body>
+    <div class="handbook-container">
+        <!-- 工作规范 -->
+        <div class="handbook-card">
+            <div class="handbook-header">
+                <h2 class="handbook-title">
+                    <i class="bi bi-briefcase"></i>
+                    工作规范
+                </h2>
+                <button class="btn-add" onclick="showAddModal(0)">
+                    <i class="bi bi-plus-lg"></i>添加规范
+                </button>
+            </div>
+            <div class="handbook-body">
+                <ul class="handbook-list">
+                    <li th:each="item : ${handbooks}" th:if="${item.segid == 0}" class="handbook-item">
+                        <div class="handbook-content">
+                            <p class="handbook-text" th:text="${item.books}">工作规范内容</p>
+                        </div>
+                        <div class="handbook-actions">
+                            <button class="btn-action btn-edit" th:onclick="|editHandbook(${item.id})|">
+                                <i class="bi bi-pencil"></i>编辑
+                            </button>
+                            <button class="btn-action btn-delete" th:onclick="|deleteHandbook(${item.id})|">
+                                <i class="bi bi-trash"></i>删除
+                            </button>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 行为准则 -->
+        <div class="handbook-card">
+            <div class="handbook-header">
+                <h2 class="handbook-title">
+                    <i class="bi bi-person-check"></i>
+                    行为准则
+                </h2>
+                <button class="btn-add" onclick="showAddModal(1)">
+                    <i class="bi bi-plus-lg"></i>添加准则
+                </button>
+            </div>
+            <div class="handbook-body">
+                <ul class="handbook-list">
+                    <li th:each="item : ${handbooks}" th:if="${item.segid == 1}" class="handbook-item">
+                        <div class="handbook-content">
+                            <p class="handbook-text" th:text="${item.books}">行为准则内容</p>
+                        </div>
+                        <div class="handbook-actions">
+                            <button class="btn-action btn-edit" th:onclick="|editHandbook(${item.id})|">
+                                <i class="bi bi-pencil"></i>编辑
+                            </button>
+                            <button class="btn-action btn-delete" th:onclick="|deleteHandbook(${item.id})|">
+                                <i class="bi bi-trash"></i>删除
+                            </button>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 安全规范 -->
+        <div class="handbook-card">
+            <div class="handbook-header">
+                <h2 class="handbook-title">
+                    <i class="bi bi-shield-check"></i>
+                    安全规范
+                </h2>
+                <button class="btn-add" onclick="showAddModal(2)">
+                    <i class="bi bi-plus-lg"></i>添加规范
+                </button>
+            </div>
+            <div class="handbook-body">
+                <ul class="handbook-list">
+                    <li th:each="item : ${handbooks}" th:if="${item.segid == 2}" class="handbook-item">
+                        <div class="handbook-content">
+                            <p class="handbook-text" th:text="${item.books}">安全规范内容</p>
+                        </div>
+                        <div class="handbook-actions">
+                            <button class="btn-action btn-edit" th:onclick="|editHandbook(${item.id})|">
+                                <i class="bi bi-pencil"></i>编辑
+                            </button>
+                            <button class="btn-action btn-delete" th:onclick="|deleteHandbook(${item.id})|">
+                                <i class="bi bi-trash"></i>删除
+                            </button>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 保密制度 -->
+        <div class="handbook-card">
+            <div class="handbook-header">
+                <h2 class="handbook-title">
+                    <i class="bi bi-lock"></i>
+                    保密制度
+                </h2>
+                <button class="btn-add" onclick="showAddModal(3)">
+                    <i class="bi bi-plus-lg"></i>添加制度
+                </button>
+            </div>
+            <div class="handbook-body">
+                <ul class="handbook-list">
+                    <li th:each="item : ${handbooks}" th:if="${item.segid == 3}" class="handbook-item">
+                        <div class="handbook-content">
+                            <p class="handbook-text" th:text="${item.books}">保密制度内容</p>
+                        </div>
+                        <div class="handbook-actions">
+                            <button class="btn-action btn-edit" th:onclick="|editHandbook(${item.id})|">
+                                <i class="bi bi-pencil"></i>编辑
+                            </button>
+                            <button class="btn-action btn-delete" th:onclick="|deleteHandbook(${item.id})|">
+                                <i class="bi bi-trash"></i>删除
+                            </button>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 奖励措施 -->
+        <div class="handbook-card">
+            <div class="handbook-header">
+                <h2 class="handbook-title">
+                    <i class="bi bi-trophy"></i>
+                    奖励措施
+                </h2>
+                <button class="btn-add" onclick="showAddModal(4)">
+                    <i class="bi bi-plus-lg"></i>添加措施
+                </button>
+            </div>
+            <div class="handbook-body">
+                <ul class="handbook-list">
+                    <li th:each="item : ${handbooks}" th:if="${item.segid == 4}" class="handbook-item">
+                        <div class="handbook-content">
+                            <p class="handbook-text" th:text="${item.books}">奖励措施内容</p>
+                        </div>
+                        <div class="handbook-actions">
+                            <button class="btn-action btn-edit" th:onclick="|editHandbook(${item.id})|">
+                                <i class="bi bi-pencil"></i>编辑
+                            </button>
+                            <button class="btn-action btn-delete" th:onclick="|deleteHandbook(${item.id})|">
+                                <i class="bi bi-trash"></i>删除
+                            </button>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 处罚措施 -->
+        <div class="handbook-card">
+            <div class="handbook-header">
+                <h2 class="handbook-title">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    处罚措施
+                </h2>
+                <button class="btn-add" onclick="showAddModal(5)">
+                    <i class="bi bi-plus-lg"></i>添加措施
+                </button>
+            </div>
+            <div class="handbook-body">
+                <ul class="handbook-list">
+                    <li th:each="item : ${handbooks}" th:if="${item.segid == 5}" class="handbook-item">
+                        <div class="handbook-content">
+                            <p class="handbook-text" th:text="${item.books}">处罚措施内容</p>
+                        </div>
+                        <div class="handbook-actions">
+                            <button class="btn-action btn-edit" th:onclick="|editHandbook(${item.id})|">
+                                <i class="bi bi-pencil"></i>编辑
+                            </button>
+                            <button class="btn-action btn-delete" th:onclick="|deleteHandbook(${item.id})|">
+                                <i class="bi bi-trash"></i>删除
+                            </button>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加/编辑模态框 -->
+    <div class="modal fade" id="handbookModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">
+                        <i class="bi bi-plus-circle me-2"></i>
+                        <span>添加守则</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="handbookForm" class="needs-validation" novalidate>
+                        <input type="hidden" id="handbookId">
+                        <div class="mb-3">
+                            <label class="form-label">守则类型</label>
+                            <select class="form-select" id="segid" required>
+                                <option value="0">工作规范</option>
+                                <option value="1">行为准则</option>
+                                <option value="2">安全规范</option>
+                                <option value="3">保密制度</option>
+                                <option value="4">奖励措施</option>
+                                <option value="5">处罚措施</option>
+                            </select>
+                            <div class="invalid-feedback">请选择守则类型</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">内容</label>
+                            <textarea class="form-control" id="content" rows="3" required></textarea>
+                            <div class="invalid-feedback">请输入内容</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveHandbook()">
+                        <span class="spinner-border spinner-border-sm d-none" id="saveSpinner" role="status"></span>
+                        保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除确认模态框 -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">确认删除</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>确定要删除这条守则吗？此操作不可恢复。</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+                        <span class="spinner-border spinner-border-sm d-none" id="deleteSpinner" role="status"></span>
+                        删除
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast提示 -->
+    <div class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                操作成功！
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 使用立即执行函数表达式(IIFE)来避免全局变量污染
+        (function() {
+            // 全局变量
+            let handbookModal = null;
+            let deleteModal = null;
+            let loadingOverlay = null;
+            let currentHandbookId = null;
+
+            // 初始化模态框
+            function initializeModals() {
+                if (!handbookModal) {
+                    handbookModal = new bootstrap.Modal(document.getElementById('handbookModal'));
+                }
+                if (!deleteModal) {
+                    deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+                }
+                if (!loadingOverlay) {
+                    loadingOverlay = document.querySelector('.loading-overlay');
+                }
+            }
+
+            // 显示加载遮罩
+            window.showLoading = function() {
+                if (!loadingOverlay) {
+                    loadingOverlay = document.querySelector('.loading-overlay');
+                }
+                if (loadingOverlay) {
+                    loadingOverlay.style.display = 'flex';
+                }
+            }
+
+            // 隐藏加载遮罩
+            window.hideLoading = function() {
+                if (!loadingOverlay) {
+                    loadingOverlay = document.querySelector('.loading-overlay');
+                }
+                if (loadingOverlay) {
+                    loadingOverlay.style.display = 'none';
+                }
+            }
+
+            // 显示Toast提示
+            window.showToast = function(message, type = 'success') {
+                const toast = document.querySelector('.toast');
+                if (!toast) return;
+                
+                const toastBody = toast.querySelector('.toast-body');
+                if (!toastBody) return;
+                
+                // 设置消息
+                toastBody.textContent = message;
+                
+                // 设置背景颜色
+                toast.className = `toast align-items-center text-white bg-${type} border-0`;
+                
+                // 显示Toast
+                const bsToast = new bootstrap.Toast(toast);
+                bsToast.show();
+            }
+
+            // 显示新增模态框
+            window.showAddModal = function(segid) {
+                initializeModals();
+                const modalTitle = document.getElementById('modalTitle');
+                const handbookForm = document.getElementById('handbookForm');
+                const handbookId = document.getElementById('handbookId');
+                
+                if (modalTitle) modalTitle.textContent = '添加守则';
+                if (handbookForm) handbookForm.reset();
+                if (handbookId) handbookId.value = '';
+                document.getElementById('segid').value = segid;
+                
+                currentHandbookId = null;
+                handbookModal.show();
+            }
+
+            // 编辑手册
+            window.editHandbook = async function(id) {
+                try {
+                    initializeModals();
+                    showLoading();
+                    // 从当前列表项获取数据
+                    const item = document.querySelector(`button[onclick="editHandbook(${id})"]`).closest('.handbook-item');
+                    if (!item) {
+                        throw new Error('未找到手册项');
+                    }
+                    
+                    const content = item.querySelector('.handbook-text').textContent.trim();
+                    const segid = item.closest('.handbook-card').querySelector('.btn-add').getAttribute('onclick').match(/showAddModal\((\d+)\)/)[1];
+                    
+                    document.getElementById('modalTitle').textContent = '编辑守则';
+                    document.getElementById('handbookId').value = id;
+                    document.getElementById('segid').value = segid;
+                    document.getElementById('content').value = content;
+                    
+                    currentHandbookId = id;
+                    handbookModal.show();
+                } catch (error) {
+                    console.error('Error:', error);
+                    showToast('获取手册信息失败', 'danger');
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            // 删除手册
+            window.deleteHandbook = function(id) {
+                initializeModals();
+                currentHandbookId = id;
+                deleteModal.show();
+            }
+
+            // 确认删除
+            window.confirmDelete = async function() {
+                if (!currentHandbookId) {
+                    showToast('无效的手册ID', 'danger');
+                    return;
+                }
+
+                try {
+                    showLoading();
+                    const response = await fetch('/api/deleteHandBook', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `id=${currentHandbookId}`
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('删除失败');
+                    }
+
+                    const result = await response.text();
+                    if (result === '1') {
+                        showToast('删除成功', 'success');
+                        deleteModal.hide();
+                        window.location.reload();
+                    } else {
+                        throw new Error('删除失败');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showToast(error.message || '删除失败', 'danger');
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            // 保存手册
+            window.saveHandbook = async function() {
+                const form = document.getElementById('handbookForm');
+                if (!form.checkValidity()) {
+                    form.classList.add('was-validated');
+                    return;
+                }
+
+                let id = document.getElementById('handbookId').value;
+                const segid = document.getElementById('segid').value;
+                const content = document.getElementById('content').value.trim();
+
+                if (!content) {
+                    showToast('请输入内容', 'warning');
+                    return;
+                }
+                if(!id)
+                    id = 0;
+                showLoading();
+                const url = id ? '/api/updateHandBook' : '/api/insertHandBook';
+                const method = 'POST';
+
+                const formData = new FormData();
+                formData.append('id', id);
+                formData.append('segid', segid);
+                formData.append('books', content);
+
+                try {
+                    const response = await fetch(url, {
+                        method: method,
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('保存失败');
+                    }
+
+                    const result = await response.text();
+                    if (result === '1') {
+                        showToast('保存成功', 'success');
+                        handbookModal.hide();
+                        loadContent('/handbooklist');
+                    } else {
+                        throw new Error('保存失败');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showToast(error.message || '保存失败', 'danger');
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            // 页面加载完成后初始化
+            document.addEventListener('DOMContentLoaded', function() {
+                initializeModals();
+            });
+        })();
+    </script>
+</body>
+</html> 

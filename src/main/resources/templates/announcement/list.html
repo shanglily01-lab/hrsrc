@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>公告管理</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@10/dist/sweetalert2.min.css">
+    <style>
+        .badge {
+            font-size: 0.9em;
+            padding: 0.5em 0.8em;
+        }
+        .table th {
+            background-color: #f8f9fa;
+        }
+        .announcement-content {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .btn-group .btn {
+            margin-right: 5px;
+        }
+        .btn-group .btn:last-child {
+            margin-right: 0;
+        }
+        .btn-view {
+            background-color: #17a2b8;
+            border-color: #17a2b8;
+            color: white;
+        }
+        .btn-view:hover {
+            background-color: #138496;
+            border-color: #117a8b;
+            color: white;
+        }
+        .btn-publish {
+            background-color: #28a745;
+            border-color: #28a745;
+            color: white;
+        }
+        .btn-publish:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>公告管理</h2>
+        </div>
+        <div class="col text-right">
+            <button class="btn btn-primary" th:if="${#session.getAttribute('user').id == 100}" onclick="showAddModal()">创建公告</button>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th>标题</th>
+                <th>发布人</th>
+                <th>发布时间</th>
+                <th>公告内容</th>
+                <th>状态</th>
+                <th>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="announcement : ${announcements}">
+                <td th:text="${announcement.title}">-</td>
+                <td th:text="${announcement.publisherName}">-</td>
+                <td th:text="${#dates.format(announcement.publishDate, 'yyyy-MM-dd HH:mm:ss')}">-</td>
+                <td th:text="${announcement.content}">nr</td>
+                <td>
+                    <span th:switch="${announcement.status}">
+                        <span th:case="'DRAFT'" class="badge badge-secondary">草稿</span>
+                        <span th:case="'PUBLISHED'" class="badge badge-success">已发布</span>
+                        <span th:case="'ARCHIVED'" class="badge badge-warning">已归档</span>
+                        <span th:case="*" class="badge badge-secondary">未知</span>
+                    </span>
+                </td>
+                <td>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-view" th:onclick="'viewAnnouncement(' + ${announcement.id} + ')'">查看</button>
+                        <button class="btn btn-sm btn-warning" th:if="${#session.getAttribute('user').id == 100}" th:onclick="'archiveAnnouncement(' + ${announcement.id} + ')'">归档</button>
+                        <button class="btn btn-sm btn-danger" th:if="${#session.getAttribute('user').id == 100}" th:onclick="'deleteAnnouncement(' + ${announcement.id} + ')'">删除</button>
+                    </div>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(announcements)}">
+                <td colspan="6" class="text-center">暂无公告</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 新增公告模态框 -->
+<div class="modal fade" id="addAnnouncementModal" tabindex="-1" role="dialog" aria-labelledby="addAnnouncementModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addAnnouncementModalLabel">创建公告</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="addAnnouncementForm">
+                    <div class="form-group">
+                        <label for="announcementTitle">标题</label>
+                        <input type="text" class="form-control" id="announcementTitle" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="announcementContent">内容</label>
+                        <textarea class="form-control" id="announcementContent" name="content" rows="6" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitAnnouncement()">发布</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 查看公告模态框 -->
+<div class="modal fade" id="viewAnnouncementModal" tabindex="-1" role="dialog" aria-labelledby="viewAnnouncementModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewAnnouncementModalLabel">公告详情</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-12">
+                        <h4 id="viewTitle"></h4>
+                        <p class="text-muted">
+                            发布人：<span id="viewPublisher"></span> | 
+                            发布时间：<span id="viewPublishTime"></span>
+                        </p>
+                        <hr>
+                        <div class="announcement-content" id="viewContent"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+
+<script th:inline="javascript">
+    // 获取当前用户角色
+    const announcementUserRole = /*[[${#session.getAttribute('user').id}]]*/ 101;
+    const isAnnouncementAdmin = announcementUserRole === 100;
+
+    // 通用的alert函数
+    function showAlert(title, message, type = 'info') {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire(title, message, type);
+        } else {
+            // 创建美化的alert弹框
+            const alertDiv = document.createElement('div');
+            alertDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                padding: 20px;
+                min-width: 300px;
+                max-width: 400px;
+                z-index: 10000;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            `;
+            
+            let color = '#007bff';
+            if (type === 'error') color = '#dc3545';
+            if (type === 'warning') color = '#ffc107';
+            if (type === 'success') color = '#28a745';
+            
+            alertDiv.innerHTML = `
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="width: 20px; height: 20px; border-radius: 50%; background: ${color}; margin-right: 10px;"></div>
+                    <h3 style="margin: 0; color: #333; font-size: 18px;">${title}</h3>
+                </div>
+                <p style="margin: 0 0 20px 0; color: #666; line-height: 1.5;">${message}</p>
+                <button onclick="this.parentElement.remove()" style="
+                    background: ${color};
+                    color: white;
+                    border: none;
+                    padding: 8px 20px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    float: right;
+                ">确定</button>
+                <div style="clear: both;"></div>
+            `;
+            
+            document.body.appendChild(alertDiv);
+        }
+    }
+
+    // 检查管理员权限
+    function checkAdminPermission() {
+        if (announcementUserRole != 100) {
+            showAlert('错误', '您没有权限执行此操作', 'error');
+            return false;
+        }
+        return true;
+    }
+
+    window.showAddModal = function() {
+        if (!checkAdminPermission()) return;
+        
+        // 检查jQuery是否可用
+        if (typeof $ !== 'undefined' && $.fn.modal) {
+            $('#addAnnouncementForm')[0].reset();
+            $('#addAnnouncementModal').modal('show');
+        } else {
+            // 使用原生JavaScript作为fallback
+            const form = document.getElementById('addAnnouncementForm');
+            const modal = document.getElementById('addAnnouncementModal');
+            if (form) form.reset();
+            if (modal) {
+                if (typeof bootstrap !== 'undefined') {
+                    const bsModal = new bootstrap.Modal(modal);
+                    bsModal.show();
+                } else {
+                    modal.style.display = 'block';
+                    modal.classList.add('show');
+                }
+            }
+        }
+    };
+
+    window.submitAnnouncement = function() {
+        if (!checkAdminPermission()) return;
+        
+        // 获取表单数据，兼容jQuery和原生JavaScript
+        let title, content;
+        if (typeof $ !== 'undefined') {
+            title = $('#announcementTitle').val();
+            content = $('#announcementContent').val();
+        } else {
+            title = document.getElementById('announcementTitle').value;
+            content = document.getElementById('announcementContent').value;
+        }
+
+        if (!title.trim() || !content.trim()) {
+            showAlert('提示', '请填写完整的公告信息', 'warning');
+            return;
+        }
+
+        // 获取当前用户信息
+        const publisherId = /*[[${#session.getAttribute('user').id}]]*/ null;
+        const publisherName = /*[[${#session.getAttribute('user').uname}]]*/ null;
+
+        const requestData = {
+            title: title,
+            content: content,
+            publisherId: publisherId,
+            publisherName: publisherName,
+            status: 'PUBLISHED'
+        };
+
+        // 发送请求，优先使用jQuery，否则使用fetch
+        if (typeof $ !== 'undefined' && $.ajax) {
+            $.ajax({
+                url: '/api/announcements/create',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(requestData),
+                success: function(response) {
+                    handleSubmitSuccess(response, title, content, publisherName);
+                },
+                error: function(xhr) {
+                    handleSubmitError(xhr);
+                }
+            });
+        } else {
+            fetch('/api/announcements/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                handleSubmitSuccess(data, title, content, publisherName);
+            })
+            .catch(error => {
+                handleSubmitError({ responseJSON: { message: '网络请求失败' } });
+            });
+        }
+    };
+
+    // 处理提交成功
+    function handleSubmitSuccess(response, title, content, publisherName) {
+        // 关闭模态框
+        if (typeof $ !== 'undefined' && $.fn.modal) {
+            $('#addAnnouncementModal').modal('hide');
+        } else {
+            const modal = document.getElementById('addAnnouncementModal');
+            if (modal) {
+                if (typeof bootstrap !== 'undefined') {
+                    const bsModal = bootstrap.Modal.getInstance(modal);
+                    if (bsModal) bsModal.hide();
+                } else {
+                    modal.style.display = 'none';
+                    modal.classList.remove('show');
+                }
+            }
+        }
+        
+        // 添加新行到表格
+        const newRow = `
+            <tr>
+                <td>${title}</td>
+                <td>${publisherName}</td>
+                <td>${new Date().toLocaleString()}</td>
+                <td>${content}</td>
+                <td><span class="badge badge-success">已发布</span></td>
+                <td>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-view" onclick="viewAnnouncement(${response.id})">查看</button>
+                        ${isAnnouncementAdmin ? `
+                        <button class="btn btn-sm btn-warning" onclick="archiveAnnouncement(${response.id})">归档</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteAnnouncement(${response.id})">删除</button>
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>
+        `;
+        
+        if (typeof $ !== 'undefined') {
+            $('table tbody').prepend(newRow);
+        } else {
+            const tbody = document.querySelector('table tbody');
+            if (tbody) {
+                tbody.insertAdjacentHTML('afterbegin', newRow);
+            }
+        }
+        
+        showAlert('成功', '公告发布成功', 'success');
+    }
+
+    // 处理提交错误
+    function handleSubmitError(xhr) {
+        let errorMessage = '发布失败';
+        try {
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = xhr.responseJSON.message;
+            }
+        } catch (e) {
+            // 静默处理错误
+        }
+        showAlert('错误', errorMessage, 'error');
+    }
+
+    window.viewAnnouncement = function(id) {
+        if (!id) {
+            showAlert('错误', '无效的公告ID', 'error');
+            return;
+        }
+        
+        // 使用jQuery或fetch发送请求
+        if (typeof $ !== 'undefined' && $.ajax) {
+            $.ajax({
+                url: '/api/announcements/' + id,
+                type: 'GET',
+                success: function(response) {
+                    handleViewSuccess(response);
+                },
+                error: function(xhr) {
+                    handleViewError(xhr);
+                }
+            });
+        } else {
+            fetch('/api/announcements/' + id)
+                .then(response => response.json())
+                .then(data => {
+                    handleViewSuccess(data);
+                })
+                .catch(error => {
+                    handleViewError({ responseJSON: { message: '网络请求失败' } });
+                });
+        }
+    };
+
+    // 处理查看成功
+    function handleViewSuccess(response) {
+        if (response) {
+            const data = response;
+            
+            // 填充数据，兼容jQuery和原生JavaScript
+            if (typeof $ !== 'undefined') {
+                $('#viewTitle').text(data.title);
+                $('#viewPublisher').text(data.publisherName);
+                $('#viewPublishTime').text(data.publishDate);
+                $('#viewContent').html(data.content.replace(/\n/g, '<br>'));
+                $('#viewAnnouncementModal').modal('show');
+            } else {
+                document.getElementById('viewTitle').textContent = data.title;
+                document.getElementById('viewPublisher').textContent = data.publisherName;
+                document.getElementById('viewPublishTime').textContent = data.publishDate;
+                document.getElementById('viewContent').innerHTML = data.content.replace(/\n/g, '<br>');
+                
+                const modal = document.getElementById('viewAnnouncementModal');
+                if (modal) {
+                    if (typeof bootstrap !== 'undefined') {
+                        const bsModal = new bootstrap.Modal(modal);
+                        bsModal.show();
+                    } else {
+                        modal.style.display = 'block';
+                        modal.classList.add('show');
+                    }
+                }
+            }
+        } else {
+            showAlert('错误', '获取公告详情失败', 'error');
+        }
+    }
+
+    // 处理查看错误
+    function handleViewError(xhr) {
+        let errorMessage = '获取公告详情失败';
+        try {
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = xhr.responseJSON.message;
+            }
+        } catch (e) {
+            // 静默处理错误
+        }
+        showAlert('错误', errorMessage, 'error');
+    }
+
+    window.deleteAnnouncement = function(id) {
+        if (!checkAdminPermission()) return;
+        
+        // 确认删除，优先使用SweetAlert2，否则使用原生confirm
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: '确认删除',
+                text: '确定要删除这条公告吗？',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '确定',
+                cancelButtonText: '取消'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    performDelete(id);
+                }
+            });
+        } else {
+            if (confirm('确定要删除这条公告吗？')) {
+                performDelete(id);
+            }
+        }
+    };
+
+    // 执行删除操作
+    function performDelete(id) {
+        if (typeof $ !== 'undefined' && $.ajax) {
+            $.ajax({
+                url: '/api/announcements/' + id,
+                type: 'DELETE',
+                success: function(response) {
+                    handleDeleteSuccess(id);
+                },
+                error: function(xhr) {
+                    handleDeleteError(xhr);
+                }
+            });
+        } else {
+            fetch('/api/announcements/' + id, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (response.ok) {
+                    handleDeleteSuccess(id);
+                } else {
+                    throw new Error('删除失败');
+                }
+            })
+            .catch(error => {
+                handleDeleteError({ responseJSON: { message: '删除失败' } });
+            });
+        }
+    }
+
+    // 处理删除成功
+    function handleDeleteSuccess(id) {
+        // 从表格中移除该行
+        if (typeof $ !== 'undefined') {
+            $(`button[onclick="viewAnnouncement(${id})"]`).closest('tr').remove();
+        } else {
+            const button = document.querySelector(`button[onclick="viewAnnouncement(${id})"]`);
+            if (button) {
+                const row = button.closest('tr');
+                if (row) row.remove();
+            }
+        }
+        
+        showAlert('成功', '公告已删除', 'success');
+    }
+
+    // 处理删除错误
+    function handleDeleteError(xhr) {
+        let errorMessage = '删除失败';
+        try {
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = xhr.responseJSON.message;
+            }
+        } catch (e) {
+            // 静默处理错误
+        }
+        showAlert('错误', errorMessage, 'error');
+    }
+
+    window.archiveAnnouncement = function(id) {
+        if (!checkAdminPermission()) return;
+        
+        // 确认归档，优先使用SweetAlert2，否则使用原生confirm
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: '确认归档',
+                text: '确定要归档这条公告吗？',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '确定',
+                cancelButtonText: '取消'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    performArchive(id);
+                }
+            });
+        } else {
+            if (confirm('确定要归档这条公告吗？')) {
+                performArchive(id);
+            }
+        }
+    };
+
+    // 执行归档操作
+    function performArchive(id) {
+        if (typeof $ !== 'undefined' && $.ajax) {
+            $.ajax({
+                url: '/api/announcements/' + id + '/archive',
+                type: 'PUT',
+                success: function(response) {
+                    handleArchiveSuccess(id);
+                },
+                error: function(xhr) {
+                    handleArchiveError(xhr);
+                }
+            });
+        } else {
+            fetch('/api/announcements/' + id + '/archive', {
+                method: 'PUT'
+            })
+            .then(response => {
+                if (response.ok) {
+                    handleArchiveSuccess(id);
+                } else {
+                    throw new Error('归档失败');
+                }
+            })
+            .catch(error => {
+                handleArchiveError({ responseJSON: { message: '归档失败' } });
+            });
+        }
+    }
+
+    // 处理归档成功
+    function handleArchiveSuccess(id) {
+        // 更新表格中的状态
+        if (typeof $ !== 'undefined') {
+            const row = $(`button[onclick="viewAnnouncement(${id})"]`).closest('tr');
+            const statusCell = row.find('td:eq(4)'); // 状态列
+            statusCell.html('<span class="badge badge-warning">已归档</span>');
+        } else {
+            const button = document.querySelector(`button[onclick="viewAnnouncement(${id})"]`);
+            if (button) {
+                const row = button.closest('tr');
+                if (row) {
+                    const statusCell = row.children[4]; // 状态列
+                    if (statusCell) {
+                        statusCell.innerHTML = '<span class="badge badge-warning">已归档</span>';
+                    }
+                }
+            }
+        }
+        
+        showAlert('成功', '公告已归档', 'success');
+    }
+
+    // 处理归档错误
+    function handleArchiveError(xhr) {
+        let errorMessage = '归档失败';
+        try {
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = xhr.responseJSON.message;
+            }
+        } catch (e) {
+            // 静默处理错误
+        }
+        showAlert('错误', errorMessage, 'error');
+    }
+</script>
+</body>
+</html> 

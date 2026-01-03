@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.pmp.hrsrc.mapper.VersionMapper">
+
+    <select id="selectAll"  resultType="com.pmp.hrsrc.entity.Version">
+        select * from t_version ;
+    </select>
+    <select id="selectAllDAO" parameterType="int" resultType="com.pmp.hrsrc.entity.VersionDAO">
+        select id,pid,(select pname from t_pro where t_pro.id = t2.pid) pname,vers ,mark from t_version t2 where t2.pid =#{pid}
+    </select>
+    <insert id="insertVersion" parameterType="com.pmp.hrsrc.entity.Version">
+        insert into t_version(id,pid,vers,mark) values(#{id},#{pid},#{vers},#{mark})
+    </insert>
+    <select id="findMaxId" resultType="int">
+        select ifnull(max(id),0)+1 from t_version ;
+    </select>
+    <select id="selectById" resultType="com.pmp.hrsrc.entity.Version">
+        select * from t_version where id =#{id}
+    </select>
+    <update id="updateVersion" parameterType="com.pmp.hrsrc.entity.Version">
+        update t_version set pid =#{pid} ,vers =#{vers},mark=#{mark} where id =#{id}
+    </update>
+    <delete id="deleteVersion" parameterType="int">
+        delete from t_version where id=#{id}
+    </delete>
+</mapper>

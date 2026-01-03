@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>我的请假记录</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@10/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        .flatpickr-calendar {
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 3px 13px rgba(0,0,0,0.08);
+            width: 307px;
+        }
+        .flatpickr-day.selected {
+            background: #4b6cb7;
+            border-color: #4b6cb7;
+        }
+        .flatpickr-day:hover {
+            background: #e6e6e6;
+        }
+        .date-picker {
+            background-color: #fff !important;
+            cursor: pointer;
+        }
+        .date-picker::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            padding: 5px;
+        }
+        .date-picker::-webkit-datetime-edit {
+            padding: 0 5px;
+        }
+        
+        /* 确保模态框在手动模式下正确显示 */
+        .modal.show {
+            display: block !important;
+        }
+        
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1040;
+        }
+        
+        .modal.show .modal-dialog {
+            transform: none;
+        }
+        
+        .modal-dialog {
+            margin: 1.75rem auto;
+            max-width: 800px;
+        }
+        
+        /* 确保模态框内容正确显示 */
+        .modal-content {
+            position: relative;
+            background-color: #fff;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            border-radius: 0.3rem;
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>我的请假记录</h2>
+        </div>
+        <div class="col text-end">
+            <button class="btn btn-primary" onclick="openLeaveModal()" data-bs-toggle="modal" data-bs-target="#leaveApplicationModal">申请请假</button>
+        </div>
+    </div>
+
+    <!-- 错误消息显示 -->
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th>请假类型</th>
+                <th>开始时间</th>
+                <th>结束时间</th>
+                <th>天数</th>
+                <th>状态</th>
+                <th>审批人</th>
+                <th>审批时间</th>
+                <th>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="leaveApplication : ${applications}" th:if="${leaveApplication.employee_id == #session.getAttribute('user').id}">
+                <td>
+                    <span th:switch="${leaveApplication.leave_type}">
+                        <span th:case="'ANNUAL'">年假</span>
+                        <span th:case="'SICK'">病假</span>
+                        <span th:case="'PERSONAL'">事假</span>                        <span th:case="'MARRIAGE'">婚假</span>
+                        <span th:case="'MATERNITY'">产假</span>
+                        <span th:case="'OTHER'">其他</span>
+                        <span th:case="*">-</span>
+                    </span>
+                </td>
+                <td>
+                    <span th:if="${leaveApplication.start_date != null}"
+                          th:text="${#dates.format(leaveApplication.start_date, 'yyyy-MM-dd')}">
+                    </span>
+                    <span th:unless="${leaveApplication.start_date != null}">-</span>
+                </td>
+                <td>
+                    <span th:if="${leaveApplication.end_date != null}"
+                          th:text="${#dates.format(leaveApplication.end_date, 'yyyy-MM-dd')}">
+                    </span>
+                    <span th:unless="${leaveApplication.end_date != null}">-</span>
+                </td>
+                <td th:text="${leaveApplication.duration != null ? leaveApplication.duration : '-'}">-</td>
+                <td>
+                    <span th:switch="${leaveApplication.status}">
+                        <span th:case="'PENDING'" class="badge bg-warning">待审批</span>
+                        <span th:case="'APPROVED'" class="badge bg-success">已批准</span>
+                        <span th:case="'REJECTED'" class="badge bg-danger">已拒绝</span>
+                        <span th:case="'CANCELLED'" class="badge bg-secondary">已取消</span>
+                        <span th:case="*" class="badge bg-secondary">未知</span>
+                    </span>
+                </td>
+                <td th:text="${leaveApplication.approver_name ?: '-'}">-</td>
+                <td>
+                    <span th:if="${leaveApplication.approval_time != null}"
+                          th:text="${#dates.format(leaveApplication.approval_time, 'yyyy-MM-dd')}">
+                    </span>
+                    <span th:unless="${leaveApplication.approval_time != null}">-</span>
+                </td>
+                <td>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-info" 
+                                th:if="${leaveApplication.id != null}"
+                                th:onclick="'viewApplication(' + ${leaveApplication.id} + ')'">查看</button>
+                        <button class="btn btn-sm btn-danger" 
+                                th:if="${leaveApplication.status == 'PENDING' and leaveApplication.id != null}"
+                                th:onclick="'cancelApplication(' + ${leaveApplication.id} + ')'">取消</button>
+                    </div>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(applications)}">
+                <td colspan="8" class="text-center">暂无请假记录</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 请假申请模态框 -->
+<div class="modal fade" id="leaveApplicationModal" tabindex="-1" aria-labelledby="leaveApplicationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="leaveApplicationModalLabel">请假申请</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="leaveForm" class="needs-validation" novalidate>
+                    <input type="hidden" id="uid" th:value="${#session.getAttribute('user').id}">
+                    <input type="hidden" id="uname" th:value="${#session.getAttribute('user').uname}">
+                    <div class="mb-3">
+                        <label for="leaveType" class="form-label">请假类型</label>
+                        <select class="form-select" id="leaveType" name="leaveType" required>
+                            <option value="">请选择请假类型</option>
+                            <option value="ANNUAL">年假</option>
+                            <option value="SICK">病假</option>
+                            <option value="PERSONAL">事假</option>
+                            <option value="MARRIAGE">婚假</option>
+                            <option value="MATERNITY">产假</option>
+                            <option value="OTHER">其他</option>
+                        </select>
+                        <div class="invalid-feedback">
+                            请选择请假类型
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="startDate" class="form-label">开始时间</label>
+                        <input type="date" class="form-control" id="startDate" name="startDate" onchange="updateEndDateMin()" required>
+                        <div class="invalid-feedback">
+                            请选择开始时间
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="endDate" class="form-label">结束时间</label>
+                        <input type="date" class="form-control" id="endDate" name="endDate" onchange="calculateDuration()" required>
+                        <div class="invalid-feedback">
+                            请选择结束时间
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="duration" class="form-label">请假天数</label>
+                        <input type="text" class="form-control" id="duration" name="duration" readonly>
+                        <div class="form-text">系统自动计算，以天为单位</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">请假原因</label>
+                        <textarea class="form-control" id="reason" name="reason" rows="3" required></textarea>
+                        <div class="invalid-feedback">
+                            请输入请假原因
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitLeaveApplication()">提交申请</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 查看请假信息模态框 -->
+<div class="modal fade" id="viewLeaveModal" tabindex="-1" aria-labelledby="viewLeaveModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewLeaveModalLabel">请假详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>请假类型：</strong><span id="viewLeaveType"></span></p>
+                        <p><strong>开始时间：</strong><span id="viewStartDate"></span></p>
+                        <p><strong>结束时间：</strong><span id="viewEndDate"></span></p>
+                        <p><strong>请假天数：</strong><span id="viewDuration"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>状态：</strong><span id="viewStatus"></span></p>
+                        <p><strong>审批人：</strong><span id="viewApprover"></span></p>
+                        <p><strong>审批时间：</strong><span id="viewApprovalTime"></span></p>
+                        <p><strong>审批意见：</strong><span id="viewApprovalComment"></span></p>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <p><strong>请假原因：</strong></p>
+                        <p id="viewReason" class="border p-2 rounded"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 先加载所有必要的脚本 -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<!-- 备用SweetAlert2加载方案 -->
+<script>
+    // 如果SweetAlert2没有加载，尝试重新加载
+    if (typeof Swal === 'undefined') {
+        console.log('SweetAlert2 not found, attempting to load...');
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@10';
+        script.onload = function() {
+            console.log('SweetAlert2 loaded successfully');
+        };
+        script.onerror = function() {
+            console.log('Failed to load SweetAlert2, will use native alerts');
+        };
+        document.head.appendChild(script);
+    }
+</script>
+
+<script th:inline="javascript">
+    // 确保函数在全局作用域中可用
+    window.openLeaveModal = function() {
+        // 尝试多种方式打开模态框
+        try {
+            // 方式1：使用Bootstrap 5的API
+            const modalElement = document.getElementById('leaveApplicationModal');
+            if (modalElement && typeof bootstrap !== 'undefined') {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+                return;
+            }
+            
+            // 方式2：使用jQuery（如果可用）
+            if (typeof $ !== 'undefined' && $.fn.modal) {
+                $('#leaveApplicationModal').modal('show');
+                return;
+            }
+            
+            // 方式3：手动显示模态框
+            if (modalElement) {
+                modalElement.classList.add('show');
+                modalElement.style.display = 'block';
+                modalElement.setAttribute('aria-hidden', 'false');
+                document.body.classList.add('modal-open');
+                
+                // 添加背景遮罩
+                const backdrop = document.createElement('div');
+                backdrop.className = 'modal-backdrop fade show';
+                backdrop.id = 'modalBackdrop';
+                document.body.appendChild(backdrop);
+                
+                return;
+            }
+        } catch (error) {
+            // 静默处理错误
+        }
+        
+        // 如果所有方式都失败，显示错误信息
+        showAlert('错误', '无法打开请假申请窗口，请刷新页面重试', 'error');
+    };
+
+    // 清理模态框的通用函数
+    window.cleanupModal = function() {
+        // 多次尝试清理，确保彻底清除
+        setTimeout(() => {
+            // 清理所有背景遮罩
+            const allBackdrops = document.querySelectorAll('.modal-backdrop');
+            allBackdrops.forEach(backdrop => {
+                backdrop.remove();
+            });
+            
+            // 确保body没有modal-open类
+            document.body.classList.remove('modal-open');
+            
+            // 移除body的所有模态框相关样式
+            document.body.style.paddingRight = '';
+            document.body.style.overflow = '';
+            
+            // 移除所有模态框的show类
+            const allModals = document.querySelectorAll('.modal');
+            allModals.forEach(modal => {
+                modal.classList.remove('show');
+                modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
+                modal.removeAttribute('aria-modal');
+            });
+        }, 50);
+        
+        // 再次延迟清理，确保完全清除
+        setTimeout(() => {
+            const remainingBackdrops = document.querySelectorAll('.modal-backdrop');
+            remainingBackdrops.forEach(backdrop => {
+                backdrop.remove();
+            });
+            document.body.classList.remove('modal-open');
+            document.body.style.paddingRight = '';
+            document.body.style.overflow = '';
+        }, 200);
+    };
+
+    // 关闭模态框的通用函数
+    window.closeModal = function(modalId) {
+        try {
+            const modalElement = document.getElementById(modalId);
+            if (modalElement && typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) {
+                    modal.hide();
+                } else {
+                    const newModal = new bootstrap.Modal(modalElement);
+                    newModal.hide();
+                }
+            } else if (typeof $ !== 'undefined' && $.fn.modal) {
+                $('#' + modalId).modal('hide');
+            } else if (modalElement) {
+                modalElement.classList.remove('show');
+                modalElement.style.display = 'none';
+                modalElement.setAttribute('aria-hidden', 'true');
+            }
+            
+            // 使用通用清理函数
+            cleanupModal();
+            
+        } catch (error) {
+            // 静默处理错误
+        }
+    };
+
+    // 更新结束时间的最小值
+    window.updateEndDateMin = function() {
+        const startDate = document.getElementById('startDate').value;
+        const endDateInput = document.getElementById('endDate');
+        
+        if (startDate && endDateInput) {
+            // 设置结束时间的最小值为开始时间
+            endDateInput.min = startDate;
+            
+            // 如果当前结束时间小于开始时间，清空结束时间
+            if (endDateInput.value && endDateInput.value < startDate) {
+                endDateInput.value = '';
+                document.getElementById('duration').value = '';
+            }
+        }
+    };
+
+    // 计算请假天数
+    window.calculateDuration = function() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            
+            // 只检查结束时间是否大于等于开始时间
+            if (end < start) {
+                showAlert('错误', '结束时间不能早于开始时间', 'error');
+                document.getElementById('endDate').value = '';
+                document.getElementById('duration').value = '';
+                return;
+            }
+
+            const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+            document.getElementById('duration').value = days;
+        }
+    };
+
+    // 页面加载完成后的初始化
+    function initializePage() {
+        // 获取后端传递的错误消息
+        const error = /*[[${error}]]*/ null;
+        if (error) {
+            showAlert('错误', error, 'error');
+        }
+
+        // 初始化日期输入框
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+        
+        if (startDateInput && endDateInput) {
+            // 当开始时间变化时，更新结束时间的最小值
+            startDateInput.addEventListener('change', function() {
+                updateEndDateMin();
+            });
+            
+            // 当结束时间变化时，计算天数
+            endDateInput.addEventListener('change', function() {
+                calculateDuration();
+            });
+        }
+
+        // 重置表单
+        const leaveModal = document.getElementById('leaveApplicationModal');
+        if (leaveModal) {
+            leaveModal.addEventListener('hidden.bs.modal', function () {
+                const form = document.getElementById('leaveForm');
+                const duration = document.getElementById('duration');
+                if (form) form.reset();
+                if (duration) duration.value = '';
+                
+                // 重置日期输入框的限制
+                if (endDateInput) {
+                    endDateInput.min = '';
+                }
+                
+                // 清理模态框遮罩
+                cleanupModal();
+            });
+        }
+        
+        // 为所有模态框添加关闭事件监听器
+        const allModals = document.querySelectorAll('.modal');
+        allModals.forEach(modal => {
+            modal.addEventListener('hidden.bs.modal', function() {
+                cleanupModal();
+            });
+        });
+    }
+
+    // 当页面加载完成时初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializePage);
+    } else {
+        initializePage();
+    }
+
+    // 提交请假申请
+    window.submitLeaveApplication = function() {
+        const leaveTypeSelect = document.getElementById('leaveType');
+        const leaveType = leaveTypeSelect.options[leaveTypeSelect.selectedIndex].value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const reason = document.getElementById('reason').value;
+        const uid = document.getElementById('uid').value;
+        const uname = document.getElementById('uname').value;
+
+        // 检查是否选择了第一个空选项
+        if (leaveTypeSelect.selectedIndex === 0) {
+            showAlert('提示', '请选择请假类型', 'warning');
+            return;
+        }
+
+        if (!startDate || !endDate || !reason.trim()) {
+            showAlert('提示', '请填写完整信息', 'warning');
+            return;
+        }
+
+        const data = {
+            leave_type: leaveType,
+            start_date: startDate + " 00:00:00",
+            end_date: endDate + " 00:00:00",
+            duration: parseFloat(document.getElementById('duration').value),
+            reason: reason.trim(),
+            employee_id: parseInt(uid),
+            employee_name: uname,
+            department: '技术部',
+            status: 'PENDING',
+            created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            updated_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+        };
+        
+        // 检查jQuery是否可用
+        if (typeof $ !== 'undefined' && $.ajax) {
+            // 使用jQuery AJAX
+            $.ajax({
+                url: '/api/leave-applications',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(response) {
+                    handleSubmitSuccess(response);
+                },
+                error: function(xhr) {
+                    handleSubmitError(xhr);
+                }
+            });
+        } else {
+            // 使用原生fetch API
+            fetch('/api/leave-applications', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                handleSubmitSuccess(data);
+            })
+            .catch(error => {
+                handleSubmitError({ responseJSON: { message: '网络请求失败' } });
+            });
+        }
+    };
+
+    // 处理提交成功的函数
+    function handleSubmitSuccess(response) {
+        if (response && response.success === false) {
+            showAlert('提示', response.message || '操作失败', 'warning');
+            return;
+        }
+        
+        // 获取新提交的请假申请数据
+        const newApplication = response.data;
+        
+        // 请假类型映射
+        const leaveTypeMap = {
+            'ANNUAL': '年假',
+            'SICK': '病假',
+            'PERSONAL': '事假',
+            'MARRIAGE': '婚假',
+            'MATERNITY': '产假',
+            'OTHER': '其他'
+        };
+        
+        // 创建新的表格行
+        const newRow = `
+            <tr>
+                <td>${leaveTypeMap[newApplication.leave_type] || '-'}</td>
+                <td>${formatDate(newApplication.start_date)}</td>
+                <td>${formatDate(newApplication.end_date)}</td>
+                <td>${newApplication.duration}</td>
+                <td><span class="badge bg-warning">待审批</span></td>
+                <td>-</td>
+                <td>-</td>
+                <td>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-info" onclick="viewApplication(${newApplication.id})">查看</button>
+                        <button class="btn btn-sm btn-danger" onclick="cancelApplication(${newApplication.id})">取消</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        
+        // 将新行添加到表格中
+        const tableBody = document.querySelector('table tbody');
+        if (tableBody) {
+            tableBody.insertAdjacentHTML('afterbegin', newRow);
+        }
+        
+        // 关闭模态框并重置表单
+        closeModal('leaveApplicationModal');
+        
+        // 重置表单
+        const form = document.getElementById('leaveForm');
+        const duration = document.getElementById('duration');
+        if (form) form.reset();
+        if (duration) duration.value = '';
+        
+        // 多重清理步骤，确保遮罩被完全移除
+        setTimeout(() => {
+            cleanupModal();
+        }, 100);
+        
+        setTimeout(() => {
+            cleanupModal();
+        }, 300);
+        
+        // 显示成功消息
+        showAlert('成功', '请假申请已提交', 'success');
+    }
+
+    // 处理提交错误的函数
+    function handleSubmitError(xhr) {
+        let errorMessage = '提交失败';
+        try {
+            if (xhr.responseJSON) {
+                errorMessage = xhr.responseJSON.message || errorMessage;
+            } else if (xhr.responseText) {
+                const response = JSON.parse(xhr.responseText);
+                errorMessage = response.message || errorMessage;
+            }
+        } catch (e) {
+            // 静默处理错误
+        }
+        showAlert('错误', errorMessage, 'error');
+    }
+
+    window.viewApplication = function(id) {
+        if (!id) {
+            showAlert('错误', '无效的请假记录ID', 'error');
+            return;
+        }
+        
+        // 获取请假详情
+        if (typeof $ !== 'undefined' && $.ajax) {
+            $.ajax({
+                url: '/api/leave-applications/' + id,
+                type: 'GET',
+                success: function(response) {
+                    handleViewSuccess(response);
+                },
+                error: function(xhr) {
+                    showAlert('错误', '获取请假详情失败', 'error');
+                }
+            });
+        } else {
+            fetch('/api/leave-applications/' + id)
+                .then(response => response.json())
+                .then(data => {
+                    handleViewSuccess(data);
+                })
+                .catch(error => {
+                    showAlert('错误', '获取请假详情失败', 'error');
+                });
+        }
+    };
+
+    // 处理查看详情的成功响应
+    function handleViewSuccess(response) {
+        if (response && response.success) {
+            const data = response.data;
+            
+            // 请假类型映射
+            const leaveTypeMap = {
+                'ANNUAL': '年假',
+                'SICK': '病假',
+                'PERSONAL': '事假',
+                'MARRIAGE': '婚假',
+                'MATERNITY': '产假',
+                'OTHER': '其他'
+            };
+            
+            // 状态映射
+            const statusMap = {
+                'PENDING': '<span class="badge bg-warning">待审批</span>',
+                'APPROVED': '<span class="badge bg-success">已批准</span>',
+                'REJECTED': '<span class="badge bg-danger">已拒绝</span>',
+                'CANCELLED': '<span class="badge bg-secondary">已取消</span>'
+            };
+            
+            // 填充数据
+            document.getElementById('viewLeaveType').textContent = leaveTypeMap[data.leave_type] || '-';
+            document.getElementById('viewStartDate').textContent = formatDate(data.start_date);
+            document.getElementById('viewEndDate').textContent = formatDate(data.end_date);
+            document.getElementById('viewDuration').textContent = data.duration || '-';
+            document.getElementById('viewStatus').innerHTML = statusMap[data.status] || '-';
+            document.getElementById('viewApprover').textContent = data.approver_name || '-';
+            document.getElementById('viewApprovalTime').textContent = formatDate(data.approval_time);
+            document.getElementById('viewApprovalComment').textContent = data.approval_comment || '-';
+            document.getElementById('viewReason').textContent = data.reason || '-';
+            
+            // 显示模态框
+            try {
+                const modalElement = document.getElementById('viewLeaveModal');
+                if (modalElement && typeof bootstrap !== 'undefined') {
+                    const modal = new bootstrap.Modal(modalElement);
+                    modal.show();
+                } else if (typeof $ !== 'undefined' && $.fn.modal) {
+                    $('#viewLeaveModal').modal('show');
+                }
+            } catch (error) {
+                // 静默处理错误
+            }
+        } else {
+            showAlert('错误', response.message || '获取请假详情失败', 'error');
+        }
+    }
+
+    window.cancelApplication = function(id) {
+        if (!id) {
+            showAlert('错误', '无效的请假记录ID', 'error');
+            return;
+        }
+        
+        // 确认对话框
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: '确认取消',
+                text: '确定要取消这条请假申请吗？',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '确定',
+                cancelButtonText: '取消'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    performCancel(id);
+                }
+            });
+        } else {
+            if (confirm('确定要取消这条请假申请吗？')) {
+                performCancel(id);
+            }
+        }
+    };
+
+    // 执行取消操作的函数
+    function performCancel(id) {
+        if (typeof $ !== 'undefined' && $.ajax) {
+            $.ajax({
+                url: '/api/leave-applications/' + id + '/cancel',
+                type: 'PUT',
+                dataType: 'json',
+                contentType: 'application/json',
+                success: function(response) {
+                    handleCancelSuccess(response);
+                },
+                error: function(xhr) {
+                    showAlert('错误', xhr.responseJSON?.message || '操作失败', 'error');
+                }
+            });
+        } else {
+            fetch('/api/leave-applications/' + id + '/cancel', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                handleCancelSuccess(data);
+            })
+            .catch(error => {
+                showAlert('错误', '操作失败', 'error');
+            });
+        }
+    }
+
+    // 处理取消成功的响应
+    function handleCancelSuccess(response) {
+        if (response.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: '成功',
+                    text: '请假申请已取消',
+                    icon: 'success',
+                    confirmButtonText: '确定',
+                    allowOutsideClick: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        location.reload();
+                    }
+                });
+            } else {
+                showAlert('成功', '请假申请已取消', 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            }
+        } else {
+            showAlert('错误', response.message || '操作失败', 'error');
+        }
+    }
+
+    // 日期格式化函数
+    window.formatDate = function(dateString) {
+        if (!dateString) return '-';
+        // 只显示日期部分，不显示时间
+        return dateString.split(' ')[0];
+    };
+
+    // 美化的alert函数
+    window.showAlert = function(title, message, type = 'info') {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire(title, message, type);
+        } else {
+            // 创建美化的alert弹框
+            const alertDiv = document.createElement('div');
+            alertDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                padding: 20px;
+                min-width: 300px;
+                max-width: 400px;
+                z-index: 10000;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            `;
+            
+            // 根据类型设置颜色
+            let color = '#007bff';
+            if (type === 'error') color = '#dc3545';
+            if (type === 'warning') color = '#ffc107';
+            if (type === 'success') color = '#28a745';
+            
+            alertDiv.innerHTML = `
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="width: 20px; height: 20px; border-radius: 50%; background: ${color}; margin-right: 10px;"></div>
+                    <h3 style="margin: 0; color: #333; font-size: 18px;">${title}</h3>
+                </div>
+                <p style="margin: 0 0 20px 0; color: #666; line-height: 1.5;">${message}</p>
+                <button onclick="this.parentElement.remove()" style="
+                    background: ${color};
+                    color: white;
+                    border: none;
+                    padding: 8px 20px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    float: right;
+                ">确定</button>
+                <div style="clear: both;"></div>
+            `;
+            
+            // 添加背景遮罩
+            const backdrop = document.createElement('div');
+            backdrop.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                z-index: 9999;
+            `;
+            backdrop.onclick = function() {
+                backdrop.remove();
+                alertDiv.remove();
+            };
+            
+            document.body.appendChild(backdrop);
+            document.body.appendChild(alertDiv);
+            
+            // 自动聚焦到按钮
+            const button = alertDiv.querySelector('button');
+            if (button) button.focus();
+        }
+    };
+</script>
+
+<!-- 额外的初始化脚本，确保在动态加载后正常工作 -->
+<script>
+    // 延迟初始化，确保DOM完全加载
+    setTimeout(function() {
+        // 重新绑定按钮点击事件
+        const leaveButton = document.querySelector('button[onclick="openLeaveModal()"]');
+        if (leaveButton) {
+            // 移除原有的onclick属性，改用事件监听器
+            leaveButton.removeAttribute('onclick');
+            leaveButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (typeof window.openLeaveModal === 'function') {
+                    window.openLeaveModal();
+                } else {
+                    // 备用方案：直接使用Bootstrap的data属性
+                    const modalElement = document.getElementById('leaveApplicationModal');
+                    if (modalElement && typeof bootstrap !== 'undefined') {
+                        const modal = new bootstrap.Modal(modalElement);
+                        modal.show();
+                    }
+                }
+            });
+        }
+        
+        // 确保模态框正确初始化
+        if (typeof bootstrap !== 'undefined') {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                try {
+                    new bootstrap.Modal(modal);
+                    
+                    // 为每个模态框添加关闭事件监听器
+                    modal.addEventListener('hidden.bs.modal', function() {
+                        if (typeof window.cleanupModal === 'function') {
+                            window.cleanupModal();
+                        }
+                    });
+                } catch (error) {
+                    // 静默处理错误
+                }
+            });
+        }
+        
+        // 添加模态框关闭事件监听
+        const closeButtons = document.querySelectorAll('[data-bs-dismiss="modal"]');
+        closeButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const modalId = this.closest('.modal').id;
+                if (typeof window.closeModal === 'function') {
+                    window.closeModal(modalId);
+                }
+            });
+        });
+        
+    }, 200); // 增加延迟时间，确保所有脚本都加载完成
+</script>
+</body>
+</html> 

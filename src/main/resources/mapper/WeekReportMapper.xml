@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.pmp.hrsrc.mapper.WeekReportMapper">
+
+    <select id="selectAll" parameterType="int" resultType="com.pmp.hrsrc.entity.WeekReport">
+        select * from (select t2.*,t1.uname from t_user t1,t_weekreport t2 where t1.id =t2.uid) t
+        where t.pid =#{id} order by t.id desc limit 100
+    </select>
+    <select id="selectById" parameterType="int" resultType="com.pmp.hrsrc.entity.WeekReport">
+        select * from (select t2.*,t1.uname from t_user t1,t_weekreport t2 where t1.id =t2.uid) t
+        where t.id =#{id}
+    </select>
+    <insert id="insertWeekReport" parameterType="com.pmp.hrsrc.entity.WeekReport">
+        insert into t_weekreport(id,uid,sdate,edate,scontext,pid) values(#{id},#{uid},#{sdate},#{edate},#{scontext},#{pid})
+    </insert>
+    <select id="findMaxId" resultType="int">
+        SELECT ifnull(max(id),0)+1 FROM t_weekreport ;
+    </select>
+    <delete id="deleteWeekReport" parameterType="int">
+        delete from t_weekreport where id=#{id}
+    </delete>
+    <update id="updateWeekReport" parameterType="com.pmp.hrsrc.entity.WeekReport">
+        update t_weekreport set sdate = #{sdate},edate=#{edate},uid =#{uid},scontext =#{scontext} where id =#{id}
+    </update>
+</mapper>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.pmp.hrsrc.mapper.ReqmarkMapper">
+
+    <select id="selectAll" parameterType="int" resultType="com.pmp.hrsrc.entity.Reqmark">
+        select * from t_reqmark where pid=#{id} order by id desc ;
+    </select>
+    <insert id="insertReqmark" parameterType="com.pmp.hrsrc.entity.Reqmark">
+        insert into t_reqmark(id,uid,reqname,reqdesc,reqlevel,reqver,reqmark,pid) values(#{id},#{uid},#{reqname},#{reqdesc},#{reqlevel},#{reqver},#{reqmark},#{pid})
+    </insert>
+    <select id="findMaxId" resultType="int">
+        select ifnull(max(id),0)+1 from t_reqmark ;
+    </select>
+    <select id="selectById" resultType="com.pmp.hrsrc.entity.Reqmark">
+        select * from t_reqmark where id =#{id}
+    </select>
+    <update id="updateReqmark" parameterType="com.pmp.hrsrc.entity.Reqmark">
+        update t_reqmark set uid =#{uid} ,reqname =#{reqname} ,reqdesc=#{reqdesc},reqlevel=#{reqlevel},reqver=#{reqver},reqmark=#{reqmark} where id =#{id}
+    </update>
+    <delete id="deleteReqmark" parameterType="int">
+        delete from t_reqmark where id=#{id}
+    </delete>
+</mapper>

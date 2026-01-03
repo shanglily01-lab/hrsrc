@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.pmp.hrsrc.mapper.DistriMapper">
+
+    <select id="selectAll" resultType="com.pmp.hrsrc.entity.Distri">
+        select * from t_distri order by id desc ;
+    </select>
+    <insert id="insertDistri" parameterType="com.pmp.hrsrc.entity.Distri">
+        insert into t_distri(id,degree,req,detail) values(#{id},#{degree},#{req},#{detail})
+    </insert>
+    <select id="findMaxId" resultType="int">
+        select ifnull(max(id),0)+1 from t_distri ;
+    </select>
+    <select id="selectById" resultType="com.pmp.hrsrc.entity.Distri">
+        select * from t_distri where id =#{id}
+    </select>
+    <update id="updateDistri" parameterType="com.pmp.hrsrc.entity.Distri">
+        update t_distri set degree =#{degree} ,req =#{req},detail =#{detail} where id =#{id}
+    </update>
+    <delete id="deleteDistri" parameterType="int">
+        delete from t_distri where id=#{id}
+    </delete>
+</mapper>

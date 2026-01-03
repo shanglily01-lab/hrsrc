@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.pmp.hrsrc.mapper.VerAndReqMapper">
+
+    <select id="selectAllByVer" parameterType="int" resultType="com.pmp.hrsrc.entity.VerAndReq">
+        select * from t_ver_req where  vid=#{vid};
+    </select>
+    <insert id="insertVerAndReq" parameterType="com.pmp.hrsrc.entity.Demark" >
+        insert into t_ver_req(id,vid,reqid,reqname) value(0,#{vid},#{reqid},#{reqname})
+    </insert>
+    <delete id="deleteVerAndReq" parameterType="int" >
+        delete from t_ver_req where id=#{id}
+    </delete>
+</mapper>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.pmp.hrsrc.mapper.UserRoleMapper">
+    <select id="selectByUid" parameterType="int" resultType="com.pmp.hrsrc.entity.UserRole">
+        select * from t_user_role where uid =#{id} ;
+    </select>
+    <select id="selectAll" resultType="com.pmp.hrsrc.entity.UserRole">
+        select * from t_user_role;
+    </select>
+    <select id="selectAllDAO" resultType="com.pmp.hrsrc.entity.UserRoleDAO">
+        select id,uid,rid,(select uname from t_user where t_user.id = uid) uname ,(select rname from t_role where t_role.id =rid) rname from t_user_role
+    </select>
+    <select id="findMaxId" resultType="int">
+        select ifnull(max(id),0)+1 from t_user_role ;
+    </select>
+    <insert id="insertUserRole" parameterType="com.pmp.hrsrc.entity.UserRole" >
+        insert into t_user_role(id,uid,rid) values(#{id},#{uid},#{rid})
+    </insert>
+    <update id ="updateUserRole" parameterType="com.pmp.hrsrc.entity.UserRole">
+        update t_user_role set uid=#{uid},rid=#{rid} where id=#{id}
+    </update>
+    <delete id="deleteUserRole" parameterType="int">
+        delete from t_user_role where id=#{id}
+    </delete>
+</mapper>

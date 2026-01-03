@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.pmp.hrsrc.mapper.RequireMapper">
+
+    <select id="selectAll" parameterType="int" resultType="com.pmp.hrsrc.entity.Require">
+        select * from t_req where pid =#{id} order by id asc;
+    </select>
+    <insert id="insertRequire" parameterType="com.pmp.hrsrc.entity.Require">
+        insert into t_req(id,model,block,item,ms,pid) values(#{id},#{model},#{block},#{item},#{ms},#{pid})
+    </insert>
+    <delete id="deleteRequire" parameterType="int">
+        delete from t_req where id=#{id}
+    </delete>
+    <select id="findMaxId" resultType="int">
+        select ifnull(max(id),0)+1 from t_req ;
+    </select>
+    <update id="updateRequire" parameterType="com.pmp.hrsrc.entity.Require">
+        update t_req set model=#{model},block=#{block},item=#{item},ms=#{ms} where id =#{id}
+    </update>
+    <select id="findById" parameterType="int" resultType="com.pmp.hrsrc.entity.Require">
+        select * from t_req where rid =#{rid}
+    </select>
+</mapper>

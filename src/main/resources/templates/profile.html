@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>用户详情</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4b6cb7;
+            --secondary-color: #182848;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --light-bg: #f8f9fa;
+            --card-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            --hover-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.2);
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 2rem 0;
+        }
+
+        .card {
+            box-shadow: var(--card-shadow);
+            border: none;
+            border-radius: 1.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--hover-shadow);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            border-radius: 1.5rem 1.5rem 0 0 !important;
+            padding: 1.5rem;
+        }
+
+        .card-body {
+            padding: 2rem;
+            background-color: white;
+        }
+
+        .user-header {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .user-header h3 {
+            margin: 0;
+            color: white;
+            font-weight: 600;
+        }
+
+        .username-display {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.9);
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 0.5rem 1.5rem;
+            border-radius: 2rem;
+            backdrop-filter: blur(5px);
+        }
+
+        .section-title {
+            color: var(--secondary-color);
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+        }
+
+        .section-title i {
+            color: var(--primary-color);
+        }
+
+        .form-group {
+            background: var(--light-bg);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+        }
+
+        .form-label {
+            color: var(--secondary-color);
+            font-weight: 500;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-control {
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(75, 108, 183, 0.25);
+        }
+
+        .preview-image {
+            max-width: 200px;
+            max-height: 200px;
+            margin-top: 1rem;
+            border-radius: 1rem;
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .preview-image:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.2);
+        }
+
+        .audio-preview {
+            margin-top: 1rem;
+            width: 100%;
+            max-width: 400px;
+            border-radius: 1rem;
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 2rem;
+            border-radius: 0.75rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            border: none;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .toast {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: var(--card-shadow);
+        }
+
+        .toast.bg-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+        }
+
+        .toast.bg-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+        }
+
+        .security-code-container {
+            position: relative;
+        }
+
+        .security-code-container .form-control {
+            padding-right: 3rem;
+        }
+
+        .toggle-security-code {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--secondary-color);
+            cursor: pointer;
+            padding: 0;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-security-code:hover {
+            color: var(--primary-color);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .file-input-container {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-container input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: var(--light-bg);
+            border: 2px dashed #dee2e6;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-label:hover {
+            border-color: var(--primary-color);
+            background: rgba(75, 108, 183, 0.1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-group {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .form-group:nth-child(2) { animation-delay: 0.1s; }
+        .form-group:nth-child(3) { animation-delay: 0.2s; }
+        .form-group:nth-child(4) { animation-delay: 0.3s; }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <!-- Toast 容器 -->
+        <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+            <div id="toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header">
+                    <strong class="me-auto" id="toastTitle">提示</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body" id="toastMessage"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="user-header">
+                    <h3><i class="bi bi-person-circle"></i> 用户详情</h3>
+                    <span class="username-display" th:text="${#session.getAttribute('user').uname}"></span>
+                    <button class="btn btn-primary ms-auto" onclick="toggleEdit()" id="editButton">
+                        <i class="bi bi-pencil"></i> 编辑
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <form id="profileForm" enctype="multipart/form-data">
+                    <input type="hidden" name="id" th:value="${Profile != null ? Profile.id : ''}">
+                    <input type="hidden" name="uid" th:value="${Profile != null ? Profile.uid : #session.getAttribute('user').id}">
+
+                    <input type="hidden" name="saddr" id="saddrPath" th:value="${Profile != null ? Profile.saddr : ''}">
+                    <input type="hidden" name="vaddr" id="vaddrPath" th:value="${Profile != null ? Profile.vaddr : ''}">
+                    
+                    <!-- 通讯联系方式部分 -->
+                    <div class="contact-section mb-4">
+                        <h4 class="section-title">
+                            <i class="bi bi-telephone"></i> 通讯联系方式
+                        </h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-envelope field-icon"></i>邮箱
+                                    </label>
+                                    <input type="email" class="form-control" name="email" th:value="${Profile != null ? Profile.email : ''}" readonly autocomplete="email">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-telegram field-icon"></i>Telegram
+                                    </label>
+                                    <input type="text" class="form-control" name="tg" th:value="${Profile != null ? Profile.tg : ''}" readonly autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-whatsapp field-icon"></i>WhatsApp
+                                    </label>
+                                    <input type="text" class="form-control" name="whatsapp" th:value="${Profile != null ? Profile.whatsapp : ''}" readonly autocomplete="tel">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-phone field-icon"></i>电话
+                                    </label>
+                                    <input type="text" class="form-control" name="phone" th:value="${Profile != null ? Profile.phone : ''}" readonly autocomplete="tel">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 安全码部分 -->
+                    <div class="contact-section mb-4">
+                        <h4 class="section-title">
+                            <i class="bi bi-shield-lock"></i> 安全信息
+                        </h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-key field-icon"></i>安全码
+                                    </label>
+                                    <div class="security-code-container">
+                                        <input type="password" class="form-control security-code-mask" 
+                                               name="securityCode" th:value="${Scode != null ? Scode.scode : ''}" 
+                                               readonly>
+                                        <button type="button" class="toggle-security-code" onclick="toggleSecurityCode(this)">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 钱包信息部分 -->
+                    <div class="wallet-section">
+                        <h4 class="section-title">
+                            <i class="bi bi-wallet2"></i> 钱包信息
+                        </h4>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-4">
+                                    <label class="form-label">
+                                        <i class="bi bi-currency-bitcoin field-icon"></i>钱包地址
+                                    </label>
+                                    <input type="text" class="form-control" name="addr" th:value="${Profile != null ? Profile.addr : ''}" readonly autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <label class="form-label">
+                                        <i class="bi bi-image field-icon"></i>钱包地址图片
+                                    </label>
+                                    <input type="file" class="form-control" id="saddr" name="saddr" accept="image/*" onchange="uploadImage(this)" disabled>
+                                    <div id="imagePreviewContainer" class="mt-2">
+                                        <img id="saddrPreview" class="preview-image" th:if="${Profile.saddr}" th:src="@{${Profile.saddr}}">
+                                        <div id="imageFileName" class="mt-2 text-muted small" th:if="${Profile.saddr}" th:text="${Profile.saddr}"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <label class="form-label">
+                                        <i class="bi bi-music-note field-icon"></i>钱包地址声音
+                                    </label>
+                                    <input type="file" class="form-control" id="vaddr" name="vaddr" accept="audio/*" onchange="uploadAudio(this)" disabled>
+                                    <div id="audioPreviewContainer" class="mt-2">
+                                        <audio id="vaddrPreview" class="audio-preview" th:if="${Profile.vaddr}" controls>
+                                            <source th:src="@{${Profile.vaddr}}" type="audio/mpeg">
+                                            您的浏览器不支持音频播放
+                                        </audio>
+                                        <div id="audioFileName" class="mt-2 text-muted small" th:if="${Profile.vaddr}" th:text="${Profile.vaddr}"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-12 text-center">
+                            <button type="button" class="btn btn-primary" onclick="saveProfile()" id="saveButton" style="display: none;">
+                                <i class="bi bi-save"></i> 保存更改
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 确保函数在全局作用域中定义
+        window.toggleEdit = function() {
+            console.log('toggleEdit called');
+            const editButton = document.getElementById('editButton');
+            const saveButton = document.getElementById('saveButton');
+            const inputs = document.querySelectorAll('input:not([name="securityCode"])');
+            const fileInputs = document.querySelectorAll('input[type="file"]');
+            
+            if (editButton.innerHTML.includes('编辑')) {
+                // 切换到编辑模式
+                editButton.innerHTML = '<i class="bi bi-x-circle"></i> 取消';
+                editButton.classList.remove('btn-primary');
+                editButton.classList.add('btn-secondary');
+                saveButton.style.display = 'inline-block';
+                
+                // 启用所有输入框（除了安全码）
+                inputs.forEach(input => input.readOnly = false);
+                fileInputs.forEach(input => input.disabled = false);
+            } else {
+                // 切换回查看模式
+                editButton.innerHTML = '<i class="bi bi-pencil"></i> 编辑';
+                editButton.classList.remove('btn-secondary');
+                editButton.classList.add('btn-primary');
+                saveButton.style.display = 'none';
+                
+                // 禁用所有输入框
+                inputs.forEach(input => input.readOnly = true);
+                fileInputs.forEach(input => input.disabled = true);
+            }
+        };
+
+        window.toggleSecurityCode = function(button) {
+            const input = button.previousElementSibling;
+            const icon = button.querySelector('i');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+            }
+        };
+
+        window.uploadImage = function(input) {
+            if (!input.files || !input.files[0]) return;
+            
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/api/uploadImage', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Server response:', data);
+                if (data.success) {
+                    const preview = document.getElementById('saddrPreview');
+                    const fileName = document.getElementById('imageFileName');
+                    const newPath = data.path;
+                    
+                    if (!preview) {
+                        const newPreview = document.createElement('img');
+                        newPreview.id = 'saddrPreview';
+                        newPreview.className = 'preview-image';
+                        document.getElementById('imagePreviewContainer').appendChild(newPreview);
+                        newPreview.src = newPath;
+                        newPreview.style.display = 'block';
+                    } else {
+                        preview.src = newPath;
+                        preview.style.display = 'block';
+                    }
+                    
+                    if (fileName) {
+                        fileName.textContent = newPath;
+                        fileName.style.display = 'block';
+                    }
+                    
+                    document.getElementById('saddrPath').value = newPath;
+                    showToast('成功', '图片上传成功');
+                } else {
+                    showToast('错误', '图片上传失败：' + data.message, false);
+                    input.value = '';
+                }
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                showToast('错误', '图片上传失败：' + error.message, false);
+                input.value = '';
+            });
+        };
+
+        window.uploadAudio = function(input) {
+            if (!input.files || !input.files[0]) return;
+            
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/api/uploadAudio', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Server response:', data);
+                if (data.success) {
+                    const preview = document.getElementById('vaddrPreview');
+                    const fileName = document.getElementById('audioFileName');
+                    const newPath = data.path;
+                    
+                    if (!preview) {
+                        const newPreview = document.createElement('audio');
+                        newPreview.id = 'vaddrPreview';
+                        newPreview.className = 'audio-preview';
+                        newPreview.controls = true;
+                        const source = document.createElement('source');
+                        source.src = newPath;
+                        source.type = 'audio/mpeg';
+                        newPreview.appendChild(source);
+                        document.getElementById('audioPreviewContainer').appendChild(newPreview);
+                    } else {
+                        const source = preview.querySelector('source');
+                        if (source) {
+                            source.src = newPath;
+                        } else {
+                            const newSource = document.createElement('source');
+                            newSource.src = newPath;
+                            newSource.type = 'audio/mpeg';
+                            preview.appendChild(newSource);
+                        }
+                    }
+                    
+                    if (fileName) {
+                        fileName.textContent = newPath;
+                        fileName.style.display = 'block';
+                    } else {
+                        const newFileName = document.createElement('div');
+                        newFileName.id = 'audioFileName';
+                        newFileName.className = 'mt-2 text-muted small';
+                        newFileName.textContent = newPath;
+                        document.getElementById('audioPreviewContainer').appendChild(newFileName);
+                    }
+                    
+                    document.getElementById('vaddrPath').value = newPath;
+                    showToast('成功', '音频上传成功');
+                } else {
+                    showToast('错误', '音频上传失败：' + data.message, false);
+                    input.value = '';
+                }
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                showToast('错误', '音频上传失败：' + error.message, false);
+                input.value = '';
+            });
+        };
+
+        window.saveProfile = function() {
+            try {
+                const formData = new FormData(document.getElementById('profileForm'));
+                
+                const saddrPath = document.getElementById('saddrPath').value;
+                const vaddrPath = document.getElementById('vaddrPath').value;
+                
+                const data = {
+                    id: formData.get('id'),
+                    uid: formData.get('uid'),
+                    uname: '[[${#session.getAttribute("user").uname}]]',
+                    email: formData.get('email'),
+                    tg: formData.get('tg'),
+                    whatsapp: formData.get('whatsapp'),
+                    phone: formData.get('phone'),
+                    addr: formData.get('addr'),
+                    saddr: saddrPath,
+                    vaddr: vaddrPath
+                };
+                
+                let url = '/api/updateProfile';
+                const id = formData.get('id');
+                if (!id || parseInt(id)==0 ) {
+                    url = '/api/insertProfile';
+                }
+                
+                console.log('Sending data:', data);
+                
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Response data:', data);
+                    if (data === 1) {
+                        showToast('成功', '保存成功');
+                        // 切换回查看模式
+                        const editButton = document.getElementById('editButton');
+                        editButton.innerHTML = '<i class="bi bi-pencil"></i> 编辑';
+                        editButton.classList.remove('btn-secondary');
+                        editButton.classList.add('btn-primary');
+                        document.getElementById('saveButton').style.display = 'none';
+                        
+                        // 禁用所有输入框
+                        const inputs = document.querySelectorAll('input:not([name="securityCode"])');
+                        const fileInputs = document.querySelectorAll('input[type="file"]');
+                        inputs.forEach(input => input.readOnly = true);
+                        fileInputs.forEach(input => input.disabled = true);
+                    } else {
+                        const errorMsg = data.message || data.error;
+                        if (errorMsg) {
+                            console.error('Save failed:', errorMsg);
+                            showToast('错误', '保存失败：' + errorMsg, false);
+                        }
+                    }
+                })
+                .catch(error => {
+                    // 如果保存成功但刷新失败，不显示错误
+                    if (error.message.includes('Failed to fetch')) {
+                        window.location.reload();
+                        return;
+                    }
+                    console.error('Save error:', error);
+                    // 只在有具体错误信息时显示
+                    if (error.message && error.message !== 'Unknown error') {
+                        showToast('错误', '保存失败：' + error.message, false);
+                    }
+                });
+            } catch (error) {
+                console.error('Unexpected error:', error);
+                // 只在有具体错误信息时显示
+                if (error.message && error.message !== 'Unknown error') {
+                    showToast('错误', '保存失败：' + error.message, false);
+                }
+            }
+        };
+
+        // Toast 提示函数
+        function showToast(title, message, isSuccess = true) {
+            const toast = document.getElementById('toast');
+            const toastTitle = document.getElementById('toastTitle');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            toastTitle.textContent = title;
+            toastMessage.textContent = message;
+            
+            // 设置样式
+            toast.classList.remove('bg-success', 'bg-danger', 'text-white');
+            if (isSuccess) {
+                toast.classList.add('bg-success', 'text-white');
+            } else {
+                toast.classList.add('bg-danger', 'text-white');
+            }
+
+            // 显示 Toast
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            const securityCodeInput = document.querySelector('.security-code-mask');
+            if (securityCodeInput) {
+                securityCodeInput.value = '********';
+            }
+
+            // 初始化图片预览
+            const saddrPreview = document.getElementById('saddrPreview');
+            if (saddrPreview && saddrPreview.src) {
+                saddrPreview.style.display = 'block';
+            }
+
+            // 初始化音频预览
+            const vaddrPreview = document.getElementById('vaddrPreview');
+            if (vaddrPreview && vaddrPreview.src) {
+                vaddrPreview.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html> 
