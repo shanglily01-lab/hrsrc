@@ -200,7 +200,7 @@ def page_dayreport(request: Request, db: Session = Depends(get_db)):
         DayReport.sdate == today
     ).first() is not None
 
-    projects = db.query(Pro).filter(Pro.pstatus != "已完成").order_by(Pro.id.desc()).all()
+    projects = db.query(Pro).order_by(Pro.id.desc()).all()
 
     return templates.TemplateResponse("mobile/dayreport.html", {
         "request": request,
@@ -267,7 +267,7 @@ def page_weekreport(request: Request, db: Session = Depends(get_db)):
         WeekReport.sdate == sdate
     ).first() is not None
 
-    projects = db.query(Pro).filter(Pro.pstatus != "已完成").order_by(Pro.id.desc()).all()
+    projects = db.query(Pro).order_by(Pro.id.desc()).all()
 
     return templates.TemplateResponse("mobile/weekreport.html", {
         "request": request,
