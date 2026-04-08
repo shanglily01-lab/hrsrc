@@ -1,0 +1,139 @@
+{% extends "mobile/base.html" %}
+{% block title %}打卡{% endblock %}
+{% block page_title %}考勤打卡{% endblock %}
+
+{% block content %}
+<!-- 用户信息 -->
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0 16px">
+  <div style="width:44px;height:44px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-weight:700;font-size:1.1rem;flex-shrink:0">
+    {{ uname[0]|upper if uname else '?' }}
+  </div>
+  <div>
+    <div style="font-weight:600;font-size:.95rem">{{ uname }}</div>
+    <div style="font-size:.75rem;color:var(--on-surface-muted)">{{ today }}</div>
+  </div>
+</div>
+
+<!-- 时钟 -->
+<div class="card" style="text-align:center;padding:24px 16px">
+  <div id="clock" style="font-family:'Manrope',sans-serif;font-size:2.8rem;font-weight:700;letter-spacing:.05em;color:var(--primary)">--:--:--</div>
+  <div id="weekday" style="font-size:.85rem;color:var(--on-surface-muted);margin-top:4px"></div>
+</div>
+
+<!-- 打卡按钮 -->
+<div style="text-align:center;padding:8px 0 4px">
+  {% if today_record and today_record.clock_out %}
+    <!-- 已下班打卡 -->
+    <div style="width:150px;height:150px;border-radius:50%;background:#e8f5e9;border:4px solid #4caf50;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;color:#388e3c">
+      <span class="material-symbols-outlined" style="font-size:40px">check_circle</span>
+      <div style="font-size:.8rem;margin-top:4px;font-weight:600">今日已完成</div>
+    </div>
+  {% elif today_record and today_record.clock_in %}
+    <!-- 已上班 未下班 -->
+    <button id="checkoutBtn" onclick="doClock('out')"
+      style="width:150px;height:150px;border-radius:50%;background:linear-gradient(135deg,#ff7043,#e53935);border:none;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;margin:0 auto;box-shadow:0 4px 20px rgba(229,57,53,.35)">
+      <span class="material-symbols-outlined" style="font-size:40px">logout</span>
+      <span style="font-family:'Manrope',sans-serif;font-weight:700;font-size:1rem">下班打卡</span>
+    </button>
+  {% else %}
+    <!-- 未打卡 -->
+    <button id="checkinBtn" onclick="doClock('in')"
+      style="width:150px;height:150px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#0053dc);border:none;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;margin:0 auto;box-shadow:0 4px 20px rgba(0,83,220,.35)">
+      <span class="material-symbols-outlined" style="font-size:40px">fingerprint</span>
+      <span style="font-family:'Manrope',sans-serif;font-weight:700;font-size:1rem">上班打卡</span>
+    </button>
+  {% endif %}
+</div>
+
+<!-- 今日记录 -->
+<div class="card" style="margin-top:16px">
+  <div style="font-weight:600;font-size:.9rem;margin-bottom:12px;display:flex;align-items:center;gap:6px">
+    <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary)">schedule</span>今日记录
+  </div>
+  <div style="display:flex;gap:0">
+    <div style="flex:1;text-align:center;padding:8px;border-right:1px solid var(--surface-high)">
+      <div style="font-size:.7rem;color:var(--on-surface-muted);margin-bottom:4px">上班时间</div>
+      <div style="font-size:1.1rem;font-weight:600;color:{% if today_record and today_record.clock_in %}#2e7d32{% else %}var(--outline){% endif %}">
+        {{ today_record.clock_in if today_record and today_record.clock_in else '--:--' }}
+      </div>
+    </div>
+    <div style="flex:1;text-align:center;padding:8px">
+      <div style="font-size:.7rem;color:var(--on-surface-muted);margin-bottom:4px">下班时间</div>
+      <div style="font-size:1.1rem;font-weight:600;color:{% if today_record and today_record.clock_out %}#e53935{% else %}var(--outline){% endif %}">
+        {{ today_record.clock_out if today_record and today_record.clock_out else '--:--' }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 本月统计 -->
+<div class="card">
+  <div style="font-weight:600;font-size:.9rem;margin-bottom:12px;display:flex;align-items:center;gap:6px">
+    <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary)">bar_chart</span>本月统计
+  </div>
+  <div style="display:flex;gap:0">
+    <div style="flex:1;text-align:center;padding:8px;border-right:1px solid var(--surface-high)">
+      <div style="font-size:1.5rem;font-weight:700;color:var(--primary)">{{ stats.days }}</div>
+      <div style="font-size:.7rem;color:var(--on-surface-muted);margin-top:2px">出勤天数</div>
+    </div>
+    <div style="flex:1;text-align:center;padding:8px;border-right:1px solid var(--surface-high)">
+      <div style="font-size:1.5rem;font-weight:700;color:{% if stats.late > 0 %}#e53935{% else %}#2e7d32{% endif %}">{{ stats.late }}</div>
+      <div style="font-size:.7rem;color:var(--on-surface-muted);margin-top:2px">迟到次数</div>
+    </div>
+    <div style="flex:1;text-align:center;padding:8px">
+      <div style="font-size:1.5rem;font-weight:700;color:{% if stats.absent > 0 %}#e53935{% else %}var(--on-surface){% endif %}">{{ stats.absent }}</div>
+      <div style="font-size:.7rem;color:var(--on-surface-muted);margin-top:2px">缺勤天数</div>
+    </div>
+  </div>
+</div>
+
+<!-- 本月打卡记录 -->
+{% if month_records %}
+<div class="card">
+  <div style="font-weight:600;font-size:.9rem;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+    <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary)">list_alt</span>本月记录
+  </div>
+  {% for r in month_records %}
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--surface-high)">
+    <div style="font-size:.85rem;color:var(--on-surface-muted)">{{ r.checkin_date }}</div>
+    <div style="font-size:.85rem">
+      <span style="color:#2e7d32">{{ r.clock_in or '--' }}</span>
+      <span style="color:var(--outline);margin:0 4px">→</span>
+      <span style="color:#e53935">{{ r.clock_out or '--' }}</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function tick() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('clock').textContent = pad(now.getHours())+':'+pad(now.getMinutes())+':'+pad(now.getSeconds());
+  const days = ['周日','周一','周二','周三','周四','周五','周六'];
+  document.getElementById('weekday').textContent = days[now.getDay()];
+  setTimeout(tick, 1000);
+})();
+
+function doClock(type) {
+  const btn = document.getElementById(type==='in'?'checkinBtn':'checkoutBtn');
+  if (btn) btn.disabled = true;
+  fetch('/api/mobile/checkin', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({type})
+  }).then(r => r.json()).then(resp => {
+    if (resp.success) {
+      _toast(type==='in' ? '上班打卡成功 ' + resp.time : '下班打卡成功 ' + resp.time);
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      _toast(resp.message || '打卡失败');
+      if (btn) btn.disabled = false;
+    }
+  });
+}
+</script>
+{% endblock %}

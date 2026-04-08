@@ -1,0 +1,100 @@
+{% extends "mobile/base.html" %}
+{% block title %}周报{% endblock %}
+{% block page_title %}提交周报{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 14px">
+  <div style="font-size:.85rem;color:var(--on-surface-muted)">{{ uname }}</div>
+  <div style="font-size:.85rem;color:var(--primary);font-weight:500">{{ week_range }}</div>
+</div>
+
+{% if submitted %}
+<div style="text-align:center;padding:40px 0">
+  <span class="material-symbols-outlined" style="font-size:56px;color:#4caf50;display:block;margin-bottom:12px">check_circle</span>
+  <div style="font-weight:600;font-size:1rem">本周周报已提交</div>
+  <div style="font-size:.85rem;color:var(--on-surface-muted);margin-top:6px">如需修改请联系管理员</div>
+</div>
+{% else %}
+<form onsubmit="submitWeekReport(event)">
+  {% if projects %}
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">folder</span>关联项目</div>
+    <select id="wrPid">
+      <option value="">-- 不关联项目 --</option>
+      {% for p in projects %}
+      <option value="{{ p.id }}">{{ p.pname }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">task_alt</span>本周完成工作 *</div>
+    <textarea id="wrWork" rows="5" placeholder="本周主要完成了哪些工作..." required></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">trending_up</span>KPI 完成情况</div>
+    <textarea id="wrKpi" rows="3" placeholder="本周 KPI 目标完成情况..."></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">warning</span>遇到的困难</div>
+    <textarea id="wrIssue" rows="3" placeholder="本周遇到哪些困难或问题..."></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">event_upcoming</span>下周计划</div>
+    <textarea id="wrPlan" rows="4" placeholder="下周工作计划..."></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">star</span>本周自评（1-10）</div>
+    <div style="display:flex;align-items:center;gap:12px;padding:4px 0">
+      <input type="range" id="wrScore" min="1" max="10" value="7"
+        style="flex:1;accent-color:var(--primary)" oninput="document.getElementById('scoreVal').textContent=this.value">
+      <span id="scoreVal" style="font-size:1.4rem;font-weight:700;color:var(--primary);min-width:24px;text-align:center">7</span>
+    </div>
+  </div>
+
+  <button type="submit" class="btn-primary">
+    <span class="material-symbols-outlined">send</span>提交周报
+  </button>
+</form>
+{% endif %}
+{% endblock %}
+
+{% set active_tab = 'weekreport' %}
+
+{% block scripts %}
+<script>
+function submitWeekReport(e) {
+  e.preventDefault();
+  const work = document.getElementById('wrWork').value.trim();
+  if (!work) { _toast('完成工作不能为空'); return; }
+  const kpi = document.getElementById('wrKpi').value.trim();
+  const issue = document.getElementById('wrIssue').value.trim();
+  const plan = document.getElementById('wrPlan').value.trim();
+  const score = document.getElementById('wrScore').value;
+  const pidEl = document.getElementById('wrPid');
+  const pid = pidEl ? pidEl.value : '';
+
+  let ctx = '【本周工作】\n' + work;
+  if (kpi) ctx += '\n\n【KPI情况】\n' + kpi;
+  if (issue) ctx += '\n\n【遇到困难】\n' + issue;
+  if (plan) ctx += '\n\n【下周计划】\n' + plan;
+  ctx += '\n\n【自评】' + score + '/10';
+
+  fetch('/api/mobile/weekreport', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ scontext: ctx, pid: pid || null })
+  }).then(r => r.json()).then(resp => {
+    if (resp.success) {
+      _toast('周报提交成功');
+      setTimeout(() => location.reload(), 1200);
+    } else _toast(resp.message || '提交失败');
+  });
+}
+</script>
+{% endblock %}

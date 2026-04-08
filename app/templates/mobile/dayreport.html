@@ -1,0 +1,92 @@
+{% extends "mobile/base.html" %}
+{% block title %}日报{% endblock %}
+{% block page_title %}提交日报{% endblock %}
+
+{% block content %}
+<!-- 用户 + 日期 -->
+<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 14px">
+  <div style="font-size:.85rem;color:var(--on-surface-muted)">{{ uname }}</div>
+  <div style="font-size:.85rem;color:var(--primary);font-weight:500">{{ today }}</div>
+</div>
+
+{% if submitted %}
+<div style="text-align:center;padding:40px 0">
+  <span class="material-symbols-outlined" style="font-size:56px;color:#4caf50;display:block;margin-bottom:12px">check_circle</span>
+  <div style="font-weight:600;font-size:1rem">今日日报已提交</div>
+  <div style="font-size:.85rem;color:var(--on-surface-muted);margin-top:6px">如需修改请联系管理员</div>
+</div>
+{% else %}
+<form id="drForm" onsubmit="submitDayReport(event)">
+  <!-- 项目选择 -->
+  {% if projects %}
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">folder</span>关联项目</div>
+    <select id="drPid" name="pid">
+      <option value="">-- 不关联项目 --</option>
+      {% for p in projects %}
+      <option value="{{ p.id }}">{{ p.pname }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">task_alt</span>今日完成工作 *</div>
+    <textarea id="drContent" rows="5" placeholder="请填写今日完成的工作内容..." required></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">warning</span>遇到的问题</div>
+    <textarea id="drIssue" rows="3" placeholder="遇到哪些问题或阻碍（没有可留空）..."></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">event_upcoming</span>明日计划</div>
+    <textarea id="drPlan" rows="3" placeholder="明日工作计划..."></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">timer</span>工作时长（小时）</div>
+    <input type="number" id="drHours" min="0" max="24" step="0.5" placeholder="如 8">
+  </div>
+
+  <button type="submit" class="btn-primary">
+    <span class="material-symbols-outlined">send</span>提交日报
+  </button>
+</form>
+{% endif %}
+{% endblock %}
+
+{% set active_tab = 'dayreport' %}
+
+{% block scripts %}
+<script>
+function submitDayReport(e) {
+  e.preventDefault();
+  const content = document.getElementById('drContent').value.trim();
+  if (!content) { _toast('工作内容不能为空'); return; }
+  const issue = document.getElementById('drIssue').value.trim();
+  const plan = document.getElementById('drPlan').value.trim();
+  const hours = document.getElementById('drHours').value;
+  const pidEl = document.getElementById('drPid');
+  const pid = pidEl ? pidEl.value : '';
+
+  // 组合成 scontext
+  let ctx = '【完成工作】\n' + content;
+  if (issue) ctx += '\n\n【遇到问题】\n' + issue;
+  if (plan) ctx += '\n\n【明日计划】\n' + plan;
+  if (hours) ctx += '\n\n【工作时长】' + hours + ' 小时';
+
+  fetch('/api/mobile/dayreport', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ scontext: ctx, pid: pid || null })
+  }).then(r => r.json()).then(resp => {
+    if (resp.success) {
+      _toast('日报提交成功');
+      setTimeout(() => location.reload(), 1200);
+    } else _toast(resp.message || '提交失败');
+  });
+}
+</script>
+{% endblock %}

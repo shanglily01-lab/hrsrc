@@ -4,9 +4,11 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.config import SECRET_KEY
 from app.database import engine, Base
 from app.routers import auth, pages, finance, hr, projects, leave, announcement, team
+from app.routers import mobile
 
 # 自动创建新表（不影响已有表）
-import app.models.team  # noqa: F401 — 注册 Team/TeamMember 到 Base
+import app.models.team    # noqa: F401
+import app.models.mobile  # noqa: F401 — 注册 CheckIn 到 Base
 Base.metadata.create_all(bind=engine, checkfirst=True)
 
 app = FastAPI(title="分布式项目管理系统")
@@ -24,3 +26,4 @@ app.include_router(projects.router)
 app.include_router(leave.router)
 app.include_router(announcement.router)
 app.include_router(team.router)
+app.include_router(mobile.router)

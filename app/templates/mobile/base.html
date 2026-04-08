@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>{% block title %}HR{% endblock %}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+<style>
+:root {
+  --primary: #0053dc;
+  --primary-dark: #0049c2;
+  --on-primary: #ffffff;
+  --bg: #faf8fe;
+  --surface: #ffffff;
+  --surface-low: #f4f3fa;
+  --surface-high: #e8e7f1;
+  --on-surface: #30323b;
+  --on-surface-muted: #5d5f68;
+  --outline: #b0b1bc;
+  --radius: 12px;
+  --nav-h: 64px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--on-surface); min-height: 100dvh; max-width: 480px; margin: 0 auto; }
+h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+
+/* Top bar */
+.topbar { position: sticky; top: 0; z-index: 10; background: var(--bg); display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--surface-high); }
+.topbar .back-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: none; background: transparent; cursor: pointer; color: var(--on-surface); }
+.topbar .back-btn:active { background: var(--surface-high); }
+.topbar h1 { font-size: 1.1rem; font-weight: 700; flex: 1; }
+
+/* Main scroll area */
+.page-body { padding: 16px 16px calc(var(--nav-h) + 16px); }
+
+/* Cards */
+.card { background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,83,220,.06); }
+.card-label { font-size: .75rem; color: var(--on-surface-muted); margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
+.card-label .material-symbols-outlined { font-size: 16px; }
+
+/* Form elements */
+textarea, input[type=text], input[type=number], input[type=date], input[type=month], select {
+  width: 100%; border: none; background: var(--surface-low); border-radius: 8px;
+  padding: 10px 12px; font-family: 'Inter', sans-serif; font-size: .9rem; color: var(--on-surface);
+  resize: none; appearance: none; -webkit-appearance: none;
+}
+textarea:focus, input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: -2px; background: #fff; }
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath fill='%235d5f68' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 32px; }
+
+/* Row layout */
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+
+/* Primary button */
+.btn-primary { width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius); font-family: 'Inter', sans-serif; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+.btn-primary:active { background: var(--primary-dark); }
+.btn-primary .material-symbols-outlined { font-size: 20px; }
+
+/* Bottom nav */
+.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: var(--nav-h); background: var(--surface); border-top: 1px solid var(--surface-high); display: flex; z-index: 20; }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-decoration: none; color: var(--on-surface-muted); font-size: .65rem; border: none; background: transparent; cursor: pointer; padding: 8px 0; }
+.nav-item.active { color: var(--primary); }
+.nav-item .material-symbols-outlined { font-size: 22px; }
+
+/* Toast */
+#toast { position: fixed; bottom: calc(var(--nav-h) + 12px); left: 50%; transform: translateX(-50%); background: #30323b; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: .85rem; opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 100; white-space: nowrap; }
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="back-btn" onclick="history.back()"><span class="material-symbols-outlined">arrow_back</span></button>
+  <h1>{% block page_title %}{% endblock %}</h1>
+  {% block topbar_right %}{% endblock %}
+</div>
+
+<div class="page-body">
+  {% block content %}{% endblock %}
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+  <a class="nav-item {% if active_tab=='checkin' %}active{% endif %}" href="/mobile/checkin">
+    <span class="material-symbols-outlined">fingerprint</span>打卡
+  </a>
+  <a class="nav-item {% if active_tab=='dayreport' %}active{% endif %}" href="/mobile/dayreport">
+    <span class="material-symbols-outlined">edit_note</span>日报
+  </a>
+  <a class="nav-item {% if active_tab=='weekreport' %}active{% endif %}" href="/mobile/weekreport">
+    <span class="material-symbols-outlined">calendar_view_week</span>周报
+  </a>
+  <a class="nav-item {% if active_tab=='expense' %}active{% endif %}" href="/mobile/expense">
+    <span class="material-symbols-outlined">receipt_long</span>报销
+  </a>
+</nav>
+
+<div id="toast"></div>
+<script>
+function _toast(msg, ms=2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), ms);
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,142 @@
+{% extends "mobile/base.html" %}
+{% block title %}报销{% endblock %}
+{% block page_title %}费用报销{% endblock %}
+
+{% block content %}
+<!-- 申请人 -->
+<div style="display:flex;align-items:center;gap:10px;padding:4px 0 14px">
+  <div style="width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;flex-shrink:0">
+    {{ uname[0]|upper if uname else '?' }}
+  </div>
+  <div>
+    <div style="font-weight:600;font-size:.9rem">{{ uname }}</div>
+    <div style="font-size:.72rem;color:var(--on-surface-muted)">报销申请人</div>
+  </div>
+</div>
+
+<form onsubmit="submitExpense(event)" enctype="multipart/form-data">
+  <div class="row">
+    <div class="card" style="margin-bottom:0">
+      <div class="card-label"><span class="material-symbols-outlined">calendar_month</span>报销月份 *</div>
+      <input type="month" id="expMonth" required value="{{ default_month }}">
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <div class="card-label"><span class="material-symbols-outlined">event</span>报销日期</div>
+      <input type="date" id="expDate" value="{{ today_date }}">
+    </div>
+  </div>
+  <div style="margin-bottom:12px"></div>
+
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">category</span>费用类别 *</div>
+    <select id="expCategory" required>
+      <option value="餐饮">餐饮</option>
+      <option value="交通">交通</option>
+      <option value="住宿">住宿</option>
+      <option value="办公用品">办公用品</option>
+      <option value="通讯">通讯</option>
+      <option value="其他">其他</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">payments</span>金额 *</div>
+    <div style="display:flex;gap:8px">
+      <select id="expCurrency" style="width:90px;flex-shrink:0">
+        <option value="CNY">CNY</option>
+        <option value="USD">USD</option>
+        <option value="U">U</option>
+      </select>
+      <input type="number" id="expAmount" step="0.01" min="0" placeholder="0.00" required style="flex:1">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">description</span>费用描述 *</div>
+    <textarea id="expDesc" rows="3" placeholder="请简要说明费用用途..." required></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">receipt</span>上传凭证</div>
+    <label for="expImage" id="imgLabel" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface-low);border-radius:8px;cursor:pointer;font-size:.9rem;color:var(--on-surface-muted)">
+      <span class="material-symbols-outlined">add_a_photo</span>点击选择图片
+    </label>
+    <input type="file" id="expImage" accept="image/*" style="display:none" onchange="previewImg(this)">
+    <img id="imgPreview" style="display:none;width:100%;border-radius:8px;margin-top:8px;max-height:200px;object-fit:contain">
+  </div>
+
+  <div class="card">
+    <div class="card-label"><span class="material-symbols-outlined">notes</span>备注</div>
+    <input type="text" id="expRemarks" placeholder="备注（可选）">
+  </div>
+
+  <button type="submit" class="btn-primary">
+    <span class="material-symbols-outlined">send</span>提交报销
+  </button>
+</form>
+
+<!-- 我的报销记录 -->
+{% if records %}
+<div style="margin-top:20px">
+  <div style="font-weight:600;font-size:.9rem;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+    <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary)">history</span>近期记录
+  </div>
+  {% for r in records %}
+  <div class="card" style="padding:12px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="font-size:.85rem;font-weight:500">{{ r.category }} · {{ r.currency }} {{ r.amount }}</div>
+        <div style="font-size:.75rem;color:var(--on-surface-muted);margin-top:2px">{{ r.expense_month }} · {{ r.description[:20] if r.description else '' }}</div>
+      </div>
+      <span style="font-size:.72rem;padding:3px 8px;border-radius:20px;white-space:nowrap;
+        {% if r.status=='APPROVED' %}background:#e8f5e9;color:#2e7d32
+        {% elif r.status=='REJECTED' %}background:#ffebee;color:#c62828
+        {% else %}background:#fff8e1;color:#f57f17{% endif %}">
+        {% if r.status=='APPROVED' %}已通过{% elif r.status=='REJECTED' %}已拒绝{% else %}待审{% endif %}
+      </span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% set active_tab = 'expense' %}
+
+{% block scripts %}
+<script>
+function previewImg(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('imgLabel').innerHTML = '<span class="material-symbols-outlined">check_circle</span>' + file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.getElementById('imgPreview');
+    img.src = e.target.result; img.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function submitExpense(e) {
+  e.preventDefault();
+  const fd = new FormData();
+  fd.append('expense_month', document.getElementById('expMonth').value);
+  fd.append('expense_date', document.getElementById('expDate').value);
+  fd.append('category', document.getElementById('expCategory').value);
+  fd.append('currency', document.getElementById('expCurrency').value);
+  fd.append('amount', document.getElementById('expAmount').value);
+  fd.append('description', document.getElementById('expDesc').value);
+  fd.append('remarks', document.getElementById('expRemarks').value);
+  const img = document.getElementById('expImage');
+  if (img.files[0]) fd.append('image', img.files[0]);
+
+  fetch('/api/mobile/expense', { method: 'POST', body: fd })
+    .then(r => r.json()).then(resp => {
+      if (resp.success) {
+        _toast('报销申请已提交');
+        setTimeout(() => location.reload(), 1500);
+      } else _toast(resp.message || '提交失败');
+    });
+}
+</script>
+{% endblock %}
