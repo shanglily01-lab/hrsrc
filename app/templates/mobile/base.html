@@ -74,6 +74,9 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   <button class="back-btn" onclick="history.back()"><span class="material-symbols-outlined">arrow_back</span></button>
   <h1>{% block page_title %}{% endblock %}</h1>
   {% block topbar_right %}{% endblock %}
+  <a href="/mobile/logout" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;color:var(--on-surface-muted);text-decoration:none;flex-shrink:0" title="退出登录">
+    <span class="material-symbols-outlined" style="font-size:22px">logout</span>
+  </a>
 </div>
 
 <div class="page-body">
