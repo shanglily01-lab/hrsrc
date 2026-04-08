@@ -17,12 +17,16 @@
 </div>
 {% else %}
 <form id="drForm" onsubmit="submitDayReport(event)">
-  <!-- 项目选择 -->
-  {% if projects %}
+  <!-- 项目选择（必选） -->
+  {% if not projects %}
+  <div class="card" style="text-align:center;color:var(--on-surface-muted);font-size:.85rem;padding:20px">
+    暂无可用项目，请联系管理员添加
+  </div>
+  {% else %}
   <div class="card">
-    <div class="card-label"><span class="material-symbols-outlined">folder</span>关联项目</div>
-    <select id="drPid" name="pid">
-      <option value="">-- 不关联项目 --</option>
+    <div class="card-label"><span class="material-symbols-outlined">folder</span>关联项目 *</div>
+    <select id="drPid" name="pid" required>
+      <option value="">-- 请选择项目 --</option>
       {% for p in projects %}
       <option value="{{ p.id }}">{{ p.pname }}</option>
       {% endfor %}
@@ -52,12 +56,12 @@ function submitDayReport(e) {
   if (!content) { _toast('工作内容不能为空'); return; }
   const pidEl = document.getElementById('drPid');
   const pid = pidEl ? pidEl.value : '';
-  const ctx = content;
+  if (!pid) { _toast('请选择关联项目'); return; }
 
   fetch('/api/mobile/dayreport', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ scontext: ctx, pid: pid || null })
+    body: JSON.stringify({ scontext: content, pid })
   }).then(r => r.json()).then(resp => {
     if (resp.success) {
       _toast('日报提交成功');

@@ -16,11 +16,15 @@
 </div>
 {% else %}
 <form onsubmit="submitWeekReport(event)">
-  {% if projects %}
+  {% if not projects %}
+  <div class="card" style="text-align:center;color:var(--on-surface-muted);font-size:.85rem;padding:20px">
+    暂无可用项目，请联系管理员添加
+  </div>
+  {% else %}
   <div class="card">
-    <div class="card-label"><span class="material-symbols-outlined">folder</span>关联项目</div>
-    <select id="wrPid">
-      <option value="">-- 不关联项目 --</option>
+    <div class="card-label"><span class="material-symbols-outlined">folder</span>关联项目 *</div>
+    <select id="wrPid" required>
+      <option value="">-- 请选择项目 --</option>
       {% for p in projects %}
       <option value="{{ p.id }}">{{ p.pname }}</option>
       {% endfor %}
@@ -50,12 +54,12 @@ function submitWeekReport(e) {
   if (!work) { _toast('完成工作不能为空'); return; }
   const pidEl = document.getElementById('wrPid');
   const pid = pidEl ? pidEl.value : '';
-  const ctx = work;
+  if (!pid) { _toast('请选择关联项目'); return; }
 
   fetch('/api/mobile/weekreport', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ scontext: ctx, pid: pid || null })
+    body: JSON.stringify({ scontext: work, pid })
   }).then(r => r.json()).then(resp => {
     if (resp.success) {
       _toast('周报提交成功');

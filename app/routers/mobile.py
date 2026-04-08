@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
 from app.models.project import Pro, DayReport, WeekReport
+from app.auth import accessible_pids
 from app.models.finance import FinExpense
 from app.models.mobile import CheckIn
 from app.auth import verify_password
@@ -200,7 +201,11 @@ def page_dayreport(request: Request, db: Session = Depends(get_db)):
         DayReport.sdate == today
     ).first() is not None
 
-    projects = db.query(Pro).order_by(Pro.id.desc()).all()
+    pids = accessible_pids(user, db)
+    q = db.query(Pro)
+    if pids is not None:
+        q = q.filter(Pro.id.in_(pids)) if pids else q.filter(False)
+    projects = q.order_by(Pro.id.desc()).all()
 
     return templates.TemplateResponse("mobile/dayreport.html", {
         "request": request,
@@ -267,7 +272,11 @@ def page_weekreport(request: Request, db: Session = Depends(get_db)):
         WeekReport.sdate == sdate
     ).first() is not None
 
-    projects = db.query(Pro).order_by(Pro.id.desc()).all()
+    pids = accessible_pids(user, db)
+    q = db.query(Pro)
+    if pids is not None:
+        q = q.filter(Pro.id.in_(pids)) if pids else q.filter(False)
+    projects = q.order_by(Pro.id.desc()).all()
 
     return templates.TemplateResponse("mobile/weekreport.html", {
         "request": request,
