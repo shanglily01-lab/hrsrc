@@ -19,8 +19,15 @@ def _get_user(request: Request, db: Session) -> User | None:
     return db.query(User).filter(User.id == user_id).first()
 
 
+def _is_mobile(request: Request) -> bool:
+    ua = request.headers.get("user-agent", "").lower()
+    return any(k in ua for k in ("mobile", "android", "iphone", "ipad", "ipod"))
+
+
 @router.get("/", response_class=HTMLResponse)
 def root(request: Request):
+    if _is_mobile(request):
+        return RedirectResponse(url="/mobile/checkin")
     return RedirectResponse(url="/index")
 
 

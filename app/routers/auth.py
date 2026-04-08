@@ -15,8 +15,15 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
+def _is_mobile(request: Request) -> bool:
+    ua = request.headers.get("user-agent", "").lower()
+    return any(k in ua for k in ("mobile", "android", "iphone", "ipad", "ipod"))
+
+
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
+    if _is_mobile(request):
+        return RedirectResponse(url="/mobile/login")
     return templates.TemplateResponse("login.html", {"request": request})
 
 

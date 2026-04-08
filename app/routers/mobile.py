@@ -79,7 +79,7 @@ async def mobile_login_post(
         return templates.TemplateResponse("mobile/login.html", ctx)
 
     user = db.query(User).filter(User.uname == uname).first()
-    if not user or not verify_password(pwd, user.pwd or ""):
+    if not user or not verify_password(pwd, user.upass or ""):
         ctx["error"] = "用户名或密码错误"
         return templates.TemplateResponse("mobile/login.html", ctx)
 
