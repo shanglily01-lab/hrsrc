@@ -1,0 +1,50 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-key"></i>用户密码重置</h4>
+    </div>
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0" style="font-size:.88rem">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>最后登录</th>
+                        <th>IP</th>
+                        <th style="width:120px">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for u in users %}
+                <tr>
+                    <td class="text-muted">{{ u.id }}</td>
+                    <td class="fw-500">{{ u.uname }}</td>
+                    <td class="text-muted">{{ u.lodate or '—' }}</td>
+                    <td class="text-muted">{{ u.ip or '—' }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-warning py-0 px-2"
+                                onclick="resetPwd({{ u.id }}, '{{ u.uname }}')">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>重置密码
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="text-muted small mt-2">重置后密码统一为 <code>AA@1111</code>，请提醒用户及时修改。</div>
+</div>
+
+<script>
+window.resetPwd = function(uid, uname) {
+    _confirm('确认将 ' + uname + ' 的密码重置为 AA@1111 ？', function() {
+        fetch('/api/admin/resetpwd/' + uid, { method: 'PUT' })
+            .then(r => r.json())
+            .then(resp => {
+                if (resp.success) _alert(resp.message);
+                else _alert(resp.message);
+            });
+    }, true);
+};
+</script>

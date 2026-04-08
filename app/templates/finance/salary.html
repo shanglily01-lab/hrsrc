@@ -1,0 +1,287 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-currency-exchange"></i>薪资记录</h4>
+    </div>
+
+    <!-- 筛选栏 -->
+    <div class="d-flex flex-wrap gap-2 mb-4 align-items-center">
+        <select class="form-select form-select-sm" id="salYear" style="max-width:140px">
+            <option value="">全部年份</option>
+            {% for y in years %}
+            <option value="{{ y }}" {{ 'selected' if y == selectedYear }}>{{ y }}</option>
+            {% endfor %}
+        </select>
+        <select class="form-select form-select-sm" id="salMonth" style="max-width:160px">
+            <option value="">全部月份</option>
+            {% for m in months %}
+            <option value="{{ m }}" {{ 'selected' if m == selectedMonth }}>{{ m }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-outline-secondary btn-sm px-3" onclick="
+            const y = document.getElementById('salYear').value;
+            const m = document.getElementById('salMonth').value;
+            let q = [];
+            if (y) q.push('year='+y);
+            if (m) q.push('month='+m);
+            loadContent('/finance/salary' + (q.length ? '?'+q.join('&') : ''));
+        ">筛选</button>
+        {% if selectedYear or selectedMonth %}
+        <button class="btn btn-outline-secondary btn-sm" onclick="loadContent('/finance/salary')">重置</button>
+        {% endif %}
+        <span class="text-muted small ms-auto">共 {{ records | length }} 条</span>
+    </div>
+
+    {% if not grouped %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-currency-exchange d-block mb-2 fs-2 opacity-25"></i>暂无薪资记录
+    </div>
+    {% else %}
+    {% for month_key, recs in grouped.items() %}
+    {% set mns = namespace(rmb=0, u=0, exp_rmb=0, exp_u=0, total_rmb=0) %}
+    {% for r in recs %}
+        {% if r.paid_rmb %}{% set mns.rmb = mns.rmb + r.paid_rmb %}{% endif %}
+        {% if r.actual_amount %}{% set mns.u = mns.u + r.actual_amount %}{% endif %}
+        {% if r.expense_rmb %}{% set mns.exp_rmb = mns.exp_rmb + r.expense_rmb %}{% endif %}
+        {% if r.expense_u %}{% set mns.exp_u = mns.exp_u + r.expense_u %}{% endif %}
+        {% set mns.total_rmb = mns.total_rmb + (r.paid_rmb if r.paid_rmb else 0) + (r.expense_rmb if r.expense_rmb else 0) %}
+    {% endfor %}
+
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center gap-3 py-2" style="cursor:pointer"
+             onclick="this.nextElementSibling.classList.toggle('d-none')">
+            <i class="bi bi-calendar-month text-primary"></i>
+            <strong>{{ month_key }}</strong>
+            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill">{{ recs | length }} 人</span>
+            {% if mns.total_rmb > 0 %}
+            <span class="badge bg-success bg-opacity-10 text-success rounded-pill">
+                应发 RMB {{ "%.0f" | format(mns.total_rmb) }}
+            </span>
+            {% endif %}
+            {% if mns.exp_rmb > 0 or mns.exp_u > 0 %}
+            <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill">
+                <i class="bi bi-receipt me-1"></i>含报销
+                {% if mns.exp_rmb > 0 %}RMB {{ "%.0f" | format(mns.exp_rmb) }}{% endif %}
+                {% if mns.exp_u > 0 %}U {{ "%.2f" | format(mns.exp_u) }}{% endif %}
+            </span>
+            {% endif %}
+            {% if mns.u > 0 %}
+            <span class="badge bg-info bg-opacity-10 text-info rounded-pill">
+                实发 U {{ "%.0f" | format(mns.u) }}
+            </span>
+            {% endif %}
+            <i class="bi bi-chevron-down small text-muted ms-auto"></i>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:.82rem">
+                <thead>
+                    <tr>
+                        <th>TG名</th>
+                        <th>岗位</th>
+                        <th>时间段</th>
+                        <th>基本</th>
+                        <th>绩效</th>
+                        <th>奖金</th>
+                        <th>报销(RMB)</th>
+                        <th>应发(RMB)</th>
+                        <th>汇率</th>
+                        <th>U数量</th>
+                        <th>实发(U)</th>
+                        <th>备注</th>
+                        <th>支付日期</th>
+                        <th>收款地址</th>
+                        <th style="width:50px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in recs %}
+                    <tr>
+                        <td class="fw-500">{{ r.tg_name }}</td>
+                        <td class="text-muted">{{ r.position or '—' }}</td>
+                        <td class="text-muted" style="white-space:nowrap">{{ r.period or '—' }}</td>
+                        <td>{{ "%.0f" | format(r.base_salary) if r.base_salary else '—' }}</td>
+                        <td>{{ "%.0f" | format(r.performance_salary) if r.performance_salary else '—' }}</td>
+                        <td class="text-success">{{ "%.0f" | format(r.bonus) if r.bonus else '—' }}</td>
+                        <td class="fw-500">
+                            {% if r.expense_rmb %}<span class="text-warning">{{ "%.0f" | format(r.expense_rmb) }} RMB</span>{% endif %}
+                            {% if r.expense_u %}<br><span class="text-primary">{{ "%.2f" | format(r.expense_u) }} U</span>{% endif %}
+                            {% if not r.expense_rmb and not r.expense_u %}—{% endif %}
+                        </td>
+                        <td class="fw-500">
+                            {% if r.paid_rmb or r.expense_rmb %}
+                                {% set total = (r.paid_rmb if r.paid_rmb else 0) + (r.expense_rmb if r.expense_rmb else 0) %}
+                                {{ "%.0f" | format(total) }}
+                                {% if r.expense_rmb %}
+                                <br><small class="text-muted" style="font-size:.72rem">薪资 {{ "%.0f"|format(r.paid_rmb if r.paid_rmb else 0) }}</small>
+                                {% endif %}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="text-muted">{{ r.exchange_rate or '—' }}</td>
+                        <td>{{ "%.2f" | format(r.paid_u) if r.paid_u else '—' }}</td>
+                        <td class="fw-bold text-primary">{{ "%.0f" | format(r.actual_amount) if r.actual_amount else '—' }}</td>
+                        <td class="text-muted" style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="{{ r.remarks }}">{{ r.remarks or '' }}</td>
+                        <td class="text-muted" style="white-space:nowrap;font-size:.75rem">{{ r.payment_date or '—' }}</td>
+                        <td class="font-monospace text-muted" style="max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="{{ r.wallet_address }}">{{ r.wallet_address or '' }}</td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <td colspan="6" class="text-muted small">合计</td>
+                        <td class="fw-500 text-warning">
+                            {% if mns.exp_rmb %}{{ "%.0f" | format(mns.exp_rmb) }} RMB{% endif %}
+                            {% if mns.exp_u %}<br>{{ "%.2f" | format(mns.exp_u) }} U{% endif %}
+                        </td>
+                        <td class="fw-bold">{{ "%.0f" | format(mns.total_rmb) if mns.total_rmb else '' }}</td>
+                        <td></td>
+                        <td></td>
+                        <td class="fw-bold text-primary">{{ "%.0f" | format(mns.u) if mns.u else '' }}</td>
+                        <td colspan="3"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>
+
+<!-- 薪资记录编辑弹窗 -->
+<div class="modal fade" id="salEditModal" tabindex="-1">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title">编辑薪资记录</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="salEditId">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">TG名</label>
+                    <input type="text" class="form-control" id="salEditTgName">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">岗位</label>
+                    <input type="text" class="form-control" id="salEditPosition">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">时间段</label>
+                    <input type="text" class="form-control" id="salEditPeriod" placeholder="如 09.10～09.25">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">支付日期</label>
+                    <input type="text" class="form-control" id="salEditPayDate" placeholder="YYYY-MM-DD">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">基本工资</label>
+                    <input type="number" class="form-control" id="salEditBase" step="0.01">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">绩效工资</label>
+                    <input type="number" class="form-control" id="salEditPerf" step="0.01">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">奖金(RMB)</label>
+                    <input type="number" class="form-control" id="salEditBonus" step="0.01">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">应发工资(RMB)</label>
+                    <input type="number" class="form-control" id="salEditPaidRmb" step="0.01">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">报销(RMB)</label>
+                    <input type="number" class="form-control" id="salEditExpRmb" step="0.01">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">报销(U)</label>
+                    <input type="number" class="form-control" id="salEditExpU" step="0.0001">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">汇率</label>
+                    <input type="number" class="form-control" id="salEditRate" step="0.01">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">U数量</label>
+                    <input type="number" class="form-control" id="salEditPaidU" step="0.0001">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">实发(U)</label>
+                    <input type="number" class="form-control" id="salEditActual" step="0.0001">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted">收款地址</label>
+                    <input type="text" class="form-control font-monospace" id="salEditWallet">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted">备注</label>
+                    <input type="text" class="form-control" id="salEditRemarks">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveSalEdit()">
+                <i class="bi bi-check-lg me-1"></i>保存
+            </button>
+        </div>
+    </div></div>
+</div>
+
+<script>
+function _getSalModal() {
+    return bootstrap.Modal.getOrCreateInstance(document.getElementById('salEditModal'));
+}
+
+window.openSalEdit = function(r) {
+    document.getElementById('salEditId').value       = r.id;
+    document.getElementById('salEditTgName').value   = r.tg_name || '';
+    document.getElementById('salEditPosition').value = r.position || '';
+    document.getElementById('salEditPeriod').value   = r.period || '';
+    document.getElementById('salEditPayDate').value  = r.payment_date || '';
+    document.getElementById('salEditBase').value     = r.base_salary != null ? r.base_salary : '';
+    document.getElementById('salEditPerf').value     = r.performance_salary != null ? r.performance_salary : '';
+    document.getElementById('salEditBonus').value    = r.bonus != null ? r.bonus : '';
+    document.getElementById('salEditPaidRmb').value  = r.paid_rmb != null ? r.paid_rmb : '';
+    document.getElementById('salEditExpRmb').value   = r.expense_rmb != null ? r.expense_rmb : '';
+    document.getElementById('salEditExpU').value     = r.expense_u != null ? r.expense_u : '';
+    document.getElementById('salEditRate').value     = r.exchange_rate != null ? r.exchange_rate : '';
+    document.getElementById('salEditPaidU').value    = r.paid_u != null ? r.paid_u : '';
+    document.getElementById('salEditActual').value   = r.actual_amount != null ? r.actual_amount : '';
+    document.getElementById('salEditWallet').value   = r.wallet_address || '';
+    document.getElementById('salEditRemarks').value  = r.remarks || '';
+    _getSalModal().show();
+};
+
+window.saveSalEdit = function() {
+    const id = document.getElementById('salEditId').value;
+    const body = {
+        tgName:             document.getElementById('salEditTgName').value,
+        position:           document.getElementById('salEditPosition').value,
+        period:             document.getElementById('salEditPeriod').value,
+        paymentDate:        document.getElementById('salEditPayDate').value,
+        baseSalary:         document.getElementById('salEditBase').value || null,
+        performanceSalary:  document.getElementById('salEditPerf').value || null,
+        bonus:              document.getElementById('salEditBonus').value || null,
+        paidRmb:            document.getElementById('salEditPaidRmb').value || null,
+        expenseRmb:         document.getElementById('salEditExpRmb').value || null,
+        expenseU:           document.getElementById('salEditExpU').value || null,
+        exchangeRate:       document.getElementById('salEditRate').value || null,
+        paidU:              document.getElementById('salEditPaidU').value || null,
+        actualAmount:       document.getElementById('salEditActual').value || null,
+        walletAddress:      document.getElementById('salEditWallet').value.trim() || null,
+        remarks:            document.getElementById('salEditRemarks').value || null,
+    };
+    fetch('/api/finance/salary/' + id, {
+        method: 'PUT', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
+    }).then(r => r.json()).then(resp => {
+        if (resp.success) {
+            _getSalModal().hide();
+            loadContent('/finance/salary');
+        } else {
+            _alert('保存失败: ' + resp.message);
+        }
+    });
+};
+</script>

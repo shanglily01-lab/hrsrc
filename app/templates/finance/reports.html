@@ -1,0 +1,277 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-graph-up-arrow"></i>综合报表</h4>
+    </div>
+
+    <!-- Tab 导航 -->
+    <ul class="nav nav-tabs mb-3" id="reportTabs">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#tabSalary">
+                <i class="bi bi-currency-exchange me-1"></i>工资报表
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#tabExpense">
+                <i class="bi bi-receipt me-1"></i>报销报表
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#tabFund">
+                <i class="bi bi-cash-coin me-1"></i>费用申请与使用
+            </a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+
+        <!-- ══ 工资报表 ══ -->
+        <div class="tab-pane fade show active" id="tabSalary">
+            {% if not salary_by_year %}
+            <div class="text-center text-muted py-5"><i class="bi bi-currency-exchange d-block fs-2 opacity-25 mb-2"></i>暂无工资数据</div>
+            {% else %}
+            {% for yr in years %}
+            {% if yr in salary_by_year %}
+            {% set ys = salary_by_year[yr] %}
+            {% set yt = namespace(rmb=0, u=0, actual=0, exp_rmb=0, exp_u=0, cnt=0) %}
+            {% for m in ys %}
+                {% set yt.rmb = yt.rmb + m.total_rmb %}
+                {% set yt.u = yt.u + m.total_u %}
+                {% set yt.actual = yt.actual + m.total_actual %}
+                {% set yt.exp_rmb = yt.exp_rmb + m.total_exp_rmb %}
+                {% set yt.exp_u = yt.exp_u + m.total_exp_u %}
+                {% set yt.cnt = yt.cnt + m.cnt %}
+            {% endfor %}
+
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center gap-3 py-2" style="cursor:pointer"
+                     onclick="this.nextElementSibling.classList.toggle('d-none')">
+                    <i class="bi bi-calendar2 text-primary"></i>
+                    <strong>{{ yr }} 年</strong>
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill">{{ yt.cnt }} 条</span>
+                    {% if yt.u > 0 %}
+                    <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill">U {{ "%.2f"|format(yt.u) }}</span>
+                    {% endif %}
+                    {% if yt.rmb > 0 %}
+                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill">RMB {{ "%.0f"|format(yt.rmb) }}</span>
+                    {% endif %}
+                    <span class="ms-auto badge bg-info bg-opacity-10 text-info rounded-pill">
+                        实发U {{ "%.2f"|format(yt.actual) }}
+                    </span>
+                    <i class="bi bi-chevron-down small text-muted ms-1"></i>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size:.83rem">
+                        <thead>
+                            <tr>
+                                <th>月份</th>
+                                <th>人数</th>
+                                <th class="text-primary">薪资(U)</th>
+                                <th class="text-success">薪资(RMB)</th>
+                                <th class="text-warning">报销(RMB)</th>
+                                <th class="text-warning">报销(U)</th>
+                                <th class="text-info fw-bold">实发(U)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in ys %}
+                            <tr>
+                                <td class="fw-500">{{ m.month or '—' }}</td>
+                                <td class="text-muted">{{ m.cnt }}</td>
+                                <td class="text-primary">{{ "%.2f"|format(m.total_u) if m.total_u else '—' }}</td>
+                                <td class="text-success">{{ "%.0f"|format(m.total_rmb) if m.total_rmb else '—' }}</td>
+                                <td class="text-warning">{{ "%.2f"|format(m.total_exp_rmb) if m.total_exp_rmb else '—' }}</td>
+                                <td class="text-warning">{{ "%.2f"|format(m.total_exp_u) if m.total_exp_u else '—' }}</td>
+                                <td class="text-info fw-bold">{{ "%.2f"|format(m.total_actual) if m.total_actual else '—' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light fw-bold">
+                            <tr>
+                                <td>合计</td>
+                                <td>{{ yt.cnt }}</td>
+                                <td class="text-primary">{{ "%.2f"|format(yt.u) }}</td>
+                                <td class="text-success">{{ "%.0f"|format(yt.rmb) }}</td>
+                                <td class="text-warning">{{ "%.2f"|format(yt.exp_rmb) }}</td>
+                                <td class="text-warning">{{ "%.2f"|format(yt.exp_u) }}</td>
+                                <td class="text-info">{{ "%.2f"|format(yt.actual) }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- ══ 报销报表 ══ -->
+        <div class="tab-pane fade" id="tabExpense">
+            {% if not expense_by_year %}
+            <div class="text-center text-muted py-5"><i class="bi bi-receipt d-block fs-2 opacity-25 mb-2"></i>暂无报销数据</div>
+            {% else %}
+            {% for yr in years %}
+            {% if yr in expense_by_year %}
+            {% set ye = expense_by_year[yr] %}
+            {% set et = namespace(rmb=0, u=0, cnt=0, approved=0, pending=0, rejected=0) %}
+            {% for m in ye %}
+                {% set et.rmb = et.rmb + m.rmb %}
+                {% set et.u = et.u + m.u %}
+                {% set et.cnt = et.cnt + m.cnt %}
+                {% set et.approved = et.approved + m.approved %}
+                {% set et.pending = et.pending + m.pending %}
+                {% set et.rejected = et.rejected + m.rejected %}
+            {% endfor %}
+
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center gap-3 py-2" style="cursor:pointer"
+                     onclick="this.nextElementSibling.classList.toggle('d-none')">
+                    <i class="bi bi-calendar2 text-primary"></i>
+                    <strong>{{ yr }} 年</strong>
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill">{{ et.cnt }} 笔</span>
+                    {% if et.rmb > 0 %}
+                    <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill">RMB {{ "%.0f"|format(et.rmb) }}</span>
+                    {% endif %}
+                    {% if et.u > 0 %}
+                    <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill">U {{ "%.2f"|format(et.u) }}</span>
+                    {% endif %}
+                    {% if et.approved > 0 %}
+                    <span class="badge bg-success text-white rounded-pill">已审批 {{ et.approved }}</span>
+                    {% endif %}
+                    {% if et.pending > 0 %}
+                    <span class="badge bg-warning text-dark rounded-pill">待审批 {{ et.pending }}</span>
+                    {% endif %}
+                    <i class="bi bi-chevron-down small text-muted ms-auto"></i>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size:.83rem">
+                        <thead>
+                            <tr>
+                                <th>月份</th>
+                                <th>总笔数</th>
+                                <th class="text-warning">金额(RMB)</th>
+                                <th class="text-primary">金额(U)</th>
+                                <th class="text-success">已审批</th>
+                                <th class="text-warning">待审批</th>
+                                <th class="text-danger">已驳回</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in ye %}
+                            <tr>
+                                <td class="fw-500">{{ m.month or '—' }}</td>
+                                <td class="text-muted">{{ m.cnt }}</td>
+                                <td class="text-warning">{{ "%.2f"|format(m.rmb) if m.rmb else '—' }}</td>
+                                <td class="text-primary">{{ "%.2f"|format(m.u) if m.u else '—' }}</td>
+                                <td><span class="badge bg-success rounded-pill">{{ m.approved }}</span></td>
+                                <td><span class="badge bg-warning text-dark rounded-pill">{{ m.pending }}</span></td>
+                                <td><span class="badge bg-danger rounded-pill">{{ m.rejected }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light fw-bold">
+                            <tr>
+                                <td>合计</td>
+                                <td>{{ et.cnt }}</td>
+                                <td class="text-warning">{{ "%.2f"|format(et.rmb) }}</td>
+                                <td class="text-primary">{{ "%.2f"|format(et.u) }}</td>
+                                <td>{{ et.approved }}</td>
+                                <td>{{ et.pending }}</td>
+                                <td>{{ et.rejected }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- ══ 费用申请与使用 ══ -->
+        <div class="tab-pane fade" id="tabFund">
+            {% if not fund_by_year %}
+            <div class="text-center text-muted py-5"><i class="bi bi-cash-coin d-block fs-2 opacity-25 mb-2"></i>暂无申请/使用数据</div>
+            {% else %}
+            {% for yr in years %}
+            {% if yr in fund_by_year %}
+            {% set yf = fund_by_year[yr] %}
+            {% set ft = namespace(req_u=0, req_rmb=0, appr_u=0, appr_rmb=0, use_u=0, use_rmb=0) %}
+            {% for m in yf %}
+                {% set ft.req_u = ft.req_u + m.req_u %}
+                {% set ft.req_rmb = ft.req_rmb + m.req_rmb %}
+                {% set ft.appr_u = ft.appr_u + m.appr_u %}
+                {% set ft.appr_rmb = ft.appr_rmb + m.appr_rmb %}
+                {% set ft.use_u = ft.use_u + m.use_u %}
+                {% set ft.use_rmb = ft.use_rmb + m.use_rmb %}
+            {% endfor %}
+
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center gap-3 py-2" style="cursor:pointer"
+                     onclick="this.nextElementSibling.classList.toggle('d-none')">
+                    <i class="bi bi-calendar2 text-primary"></i>
+                    <strong>{{ yr }} 年</strong>
+                    {% if ft.appr_u > 0 %}
+                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill">批准U {{ "%.2f"|format(ft.appr_u) }}</span>
+                    {% endif %}
+                    {% if ft.appr_rmb > 0 %}
+                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill">批准RMB {{ "%.0f"|format(ft.appr_rmb) }}</span>
+                    {% endif %}
+                    {% if ft.use_u > 0 %}
+                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill">使用U {{ "%.2f"|format(ft.use_u) }}</span>
+                    {% endif %}
+                    <i class="bi bi-chevron-down small text-muted ms-auto"></i>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size:.83rem">
+                        <thead>
+                            <tr>
+                                <th>月份</th>
+                                <th class="text-secondary">申请U</th>
+                                <th class="text-secondary">申请RMB</th>
+                                <th class="text-success">批准U</th>
+                                <th class="text-success">批准RMB</th>
+                                <th class="text-danger">使用U</th>
+                                <th class="text-danger">使用RMB</th>
+                                <th class="text-info">结余U</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in yf %}
+                            {% set balance = m.appr_u - m.use_u %}
+                            <tr>
+                                <td class="fw-500">{{ m.month or '—' }}</td>
+                                <td class="text-secondary">{{ "%.2f"|format(m.req_u) if m.req_u else '—' }}</td>
+                                <td class="text-secondary">{{ "%.0f"|format(m.req_rmb) if m.req_rmb else '—' }}</td>
+                                <td class="text-success">{{ "%.2f"|format(m.appr_u) if m.appr_u else '—' }}</td>
+                                <td class="text-success">{{ "%.0f"|format(m.appr_rmb) if m.appr_rmb else '—' }}</td>
+                                <td class="text-danger">{{ "%.2f"|format(m.use_u) if m.use_u else '—' }}</td>
+                                <td class="text-danger">{{ "%.0f"|format(m.use_rmb) if m.use_rmb else '—' }}</td>
+                                <td class="fw-bold {{ 'text-success' if balance >= 0 else 'text-danger' }}">
+                                    {{ "%.2f"|format(balance) }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light fw-bold">
+                            {% set bal_total = ft.appr_u - ft.use_u %}
+                            <tr>
+                                <td>合计</td>
+                                <td class="text-secondary">{{ "%.2f"|format(ft.req_u) }}</td>
+                                <td class="text-secondary">{{ "%.0f"|format(ft.req_rmb) }}</td>
+                                <td class="text-success">{{ "%.2f"|format(ft.appr_u) }}</td>
+                                <td class="text-success">{{ "%.0f"|format(ft.appr_rmb) }}</td>
+                                <td class="text-danger">{{ "%.2f"|format(ft.use_u) }}</td>
+                                <td class="text-danger">{{ "%.0f"|format(ft.use_rmb) }}</td>
+                                <td class="{{ 'text-success' if bal_total >= 0 else 'text-danger' }}">{{ "%.2f"|format(bal_total) }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+        </div>
+
+    </div>
+</div>

@@ -1,0 +1,446 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-receipt"></i>费用报销</h4>
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>新增报销</button>
+    </div>
+
+    <div class="d-flex gap-2 mb-3 align-items-center">
+        <select class="form-select form-select-sm" id="expStatus" style="max-width:160px">
+            <option value="">全部状态</option>
+            <option value="PENDING" {{ 'selected' if selectedStatus == 'PENDING' else '' }}>待审批</option>
+            <option value="APPROVED" {{ 'selected' if selectedStatus == 'APPROVED' else '' }}>已通过</option>
+            <option value="REJECTED" {{ 'selected' if selectedStatus == 'REJECTED' else '' }}>已拒绝</option>
+        </select>
+        <button class="btn btn-outline-secondary btn-sm px-3"
+                onclick="loadContent('/finance/expenses?status='+document.getElementById('expStatus').value)">筛选</button>
+        {% if selectedStatus %}
+        <button class="btn btn-outline-secondary btn-sm" onclick="loadContent('/finance/expenses')">重置</button>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>报销月份</th><th>类别</th><th>描述</th><th>金额</th><th>币种</th>
+                            <th>日期</th><th>报销人</th><th>凭证</th><th>状态</th><th>备注</th><th style="width:120px">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in expenses %}
+                        <tr>
+                            <td class="small font-monospace text-muted">{{ e.expense_month or '—' }}</td>
+                            <td><span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary small">{{ e.category }}</span></td>
+                            <td class="small">{{ e.description }}</td>
+                            <td class="small fw-500">{{ e.amount }}</td>
+                            <td>
+                                <span class="badge rounded-pill {{ 'bg-primary text-white' if e.currency == 'U' else ('bg-success text-white' if e.currency in ('CNY','RMB') else 'bg-info text-white') }}" style="font-size:.7rem">
+                                    {{ e.currency }}
+                                </span>
+                            </td>
+                            <td class="small font-monospace text-muted">{{ e.expense_date }}</td>
+                            <td class="small">{{ e.applicant }}</td>
+                            <td>
+                                {% if e.image_path %}
+                                <img src="{{ e.image_path }}" onclick="showLightbox('{{ e.image_path }}')"
+                                     style="height:32px;width:48px;object-fit:cover;border-radius:4px;cursor:zoom-in" title="点击放大">
+                                {% else %}
+                                <span class="text-muted" style="font-size:.75rem">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge rounded-pill {{ 'bg-success' if e.status == 'APPROVED' else ('bg-danger' if e.status == 'REJECTED' else 'bg-warning text-dark') }}">
+                                    {{ '已通过' if e.status == 'APPROVED' else ('已拒绝' if e.status == 'REJECTED' else '待审批') }}
+                                </span>
+                            </td>
+                            <td class="small text-muted" style="max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="{{ e.remarks }}">{{ e.remarks }}</td>
+                            <td>
+                                {% if is_admin and e.status == 'PENDING' %}
+                                <button class="btn btn-sm btn-outline-success py-0 px-2 me-1" onclick="approveExpense({{ e.id }})" title="通过">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger py-0 px-2 me-1" onclick="rejectExpense({{ e.id }})" title="拒绝">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                                {% endif %}
+                                <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="openEdit({{ e.id }})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="11" class="text-center text-muted py-5">
+                            <i class="bi bi-receipt d-block mb-2 fs-3 opacity-25"></i>暂无报销记录
+                        </td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="expModal" tabindex="-1">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title" id="expModalTitle">新增报销</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="expId">
+            <input type="hidden" id="expImagePath">
+
+            <!-- 图片上传区 -->
+            <div class="mb-3">
+                <label class="form-label small text-muted">上传凭证图片（自动识别金额）</label>
+                <div class="d-flex gap-2 align-items-start">
+                    <div class="flex-grow-1">
+                        <input type="file" class="form-control form-control-sm" id="expImageFile" accept="image/*" onchange="uploadAndOcr()">
+                    </div>
+                    <div id="expImagePreview" style="display:none">
+                        <img id="expImageThumb" src="" style="height:60px;border-radius:6px;object-fit:cover;border:1px solid #dee2e6">
+                    </div>
+                </div>
+                <div id="ocrStatus" class="mt-1" style="font-size:.75rem"></div>
+            </div>
+
+            <!-- 批量确认区（多条时显示） -->
+            <div id="batchConfirmSection" style="display:none">
+                <div class="alert alert-info py-2 px-3 mb-2 d-flex align-items-center gap-2" style="font-size:.82rem">
+                    <i class="bi bi-info-circle"></i>
+                    <span>识别到多条报销项目，请确认后批量生成。可编辑或删除行。</span>
+                </div>
+                <div class="mb-2 d-flex gap-2 align-items-center">
+                    <label class="form-label small text-muted mb-0 flex-shrink-0">报销月份 *</label>
+                    <input type="month" class="form-control form-control-sm" id="batchMonth" style="max-width:160px">
+                    <label class="form-label small text-muted mb-0 ms-3 flex-shrink-0">报销人</label>
+                    <select class="form-select form-select-sm" id="batchApplicant" style="max-width:160px" {% if not is_admin %}disabled{% endif %}>
+                        {% for name in emp_names %}
+                        <option value="{{ name }}">{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <table class="table table-bordered table-sm mb-0" style="font-size:.82rem" id="batchTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:36px"></th>
+                            <th>描述 *</th>
+                            <th style="width:110px">金额 *</th>
+                            <th style="width:110px">币种</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batchRows"></tbody>
+                    <tfoot>
+                        <tr class="table-light fw-500">
+                            <td colspan="2" class="text-end small text-muted pe-2">合计</td>
+                            <td id="batchTotalCell" colspan="2" class="text-primary" style="font-size:.85rem"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+                <button type="button" class="btn btn-success btn-sm w-100 mt-2" onclick="submitBatch()">
+                    <i class="bi bi-check-all me-1"></i>确认批量生成报销单
+                </button>
+                <hr class="my-3">
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">报销月份 *</label>
+                    <input type="month" class="form-control" id="expMonth">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">类别</label>
+                    <select class="form-select" id="expCategory">
+                        <option value="差旅">差旅</option>
+                        <option value="餐饮">餐饮</option>
+                        <option value="办公">办公</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">报销人</label>
+                    <select class="form-select" id="expApplicant" {% if not is_admin %}disabled{% endif %}>
+                        {% for name in emp_names %}
+                        <option value="{{ name }}">{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted">描述 *</label>
+                    <input type="text" class="form-control" id="expDesc">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">金额 *</label>
+                    <input type="number" class="form-control" id="expAmount" step="0.01">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">币种</label>
+                    <select class="form-select" id="expCurrency">
+                        <option value="CNY">CNY (人民币)</option>
+                        <option value="U">U (USDT)</option>
+                        <option value="USD">USD</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">日期</label>
+                    <input type="date" class="form-control" id="expDate">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted">备注</label>
+                    <textarea class="form-control" id="expRemarks" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveExpense()"><i class="bi bi-check-lg me-1"></i>保存</button>
+        </div>
+    </div></div>
+</div>
+
+<script>
+function _setSelect(id, val) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    for (let i = 0; i < el.options.length; i++) {
+        if (el.options[i].value === val) { el.selectedIndex = i; return; }
+    }
+    // Value not in list — add a temporary option (e.g. for saved records with old names)
+    const opt = document.createElement('option');
+    opt.value = val; opt.textContent = val;
+    el.appendChild(opt);
+    el.value = val;
+}
+
+let _ocrImagePath = '';
+
+window.uploadAndOcr = function() {
+    const fileInput = document.getElementById('expImageFile');
+    if (!fileInput.files.length) return;
+    const status = document.getElementById('ocrStatus');
+    status.innerHTML = '<span class="text-muted"><i class="bi bi-hourglass-split me-1"></i>正在上传并识别...</span>';
+    // Reset batch section
+    document.getElementById('batchConfirmSection').style.display = 'none';
+    document.getElementById('batchRows').innerHTML = '';
+    document.getElementById('batchTotalCell').innerHTML = '';
+
+    const fd = new FormData();
+    fd.append('file', fileInput.files[0]);
+    fetch('/api/finance/expenses/ocr', {method: 'POST', body: fd})
+        .then(r => r.json())
+        .then(resp => {
+            if (!resp.success) {
+                status.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>上传失败: ' + (resp.message||'') + '</span>';
+                return;
+            }
+            const d = resp.data;
+            _ocrImagePath = d.imagePath || '';
+            // Show thumbnail
+            if (d.imagePath) {
+                document.getElementById('expImagePath').value = d.imagePath;
+                document.getElementById('expImageThumb').src = d.imagePath;
+                document.getElementById('expImagePreview').style.display = 'block';
+            }
+            const items = d.items || [];
+            if (items.length === 0) {
+                status.innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>图片已上传，未能识别到项目，请手动填写</span>';
+            } else if (items.length === 1) {
+                // Single item — fill the form
+                const it = items[0];
+                if (it.amount != null) document.getElementById('expAmount').value = it.amount;
+                if (it.currency) document.getElementById('expCurrency').value = it.currency;
+                if (it.description) document.getElementById('expDesc').value = it.description;
+                status.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>识别成功：' + (it.amount||'?') + ' ' + (it.currency||'') + '</span>';
+            } else {
+                // Multiple items — show batch confirm section
+                status.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>识别到 ' + items.length + ' 条项目，请在下方确认</span>';
+                _renderBatchRows(items);
+                const batchSec = document.getElementById('batchConfirmSection');
+                batchSec.style.display = '';
+                document.getElementById('batchMonth').value = lastMonth();
+                _setSelect('batchApplicant', "{{ uname }}");
+            }
+            if (resp.message) status.innerHTML += ' <small class="text-muted">(' + resp.message + ')</small>';
+        })
+        .catch(e => { status.innerHTML = '<span class="text-danger">请求失败: ' + e + '</span>'; });
+};
+
+function _renderBatchRows(items) {
+    const tbody = document.getElementById('batchRows');
+    tbody.innerHTML = '';
+    items.forEach((it, i) => {
+        const tr = document.createElement('tr');
+        tr.dataset.idx = i;
+        tr.innerHTML =
+            '<td class="text-center align-middle">' +
+                '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" onclick="this.closest(\'tr\').remove();_updateBatchTotal()">' +
+                    '<i class="bi bi-x"></i>' +
+                '</button>' +
+            '</td>' +
+            '<td><input type="text" class="form-control form-control-sm batch-desc" value="' + _esc(it.description||'') + '"></td>' +
+            '<td><input type="number" class="form-control form-control-sm batch-amount" step="0.01" value="' + (it.amount!=null?it.amount:'') + '" oninput="_updateBatchTotal()"></td>' +
+            '<td><select class="form-select form-select-sm batch-currency" onchange="_updateBatchTotal()">' +
+                '<option value="CNY"' + (it.currency==='CNY'?' selected':'') + '>CNY</option>' +
+                '<option value="U"'   + (it.currency==='U'  ?' selected':'') + '>U (USDT)</option>' +
+                '<option value="USD"' + (it.currency==='USD'?' selected':'') + '>USD</option>' +
+            '</select></td>';
+        tbody.appendChild(tr);
+    });
+    _updateBatchTotal();
+}
+
+function _updateBatchTotal() {
+    const rows = document.querySelectorAll('#batchRows tr');
+    let rmb = 0, u = 0, usd = 0, other = 0;
+    rows.forEach(tr => {
+        const amt = parseFloat(tr.querySelector('.batch-amount')?.value) || 0;
+        const cur = tr.querySelector('.batch-currency')?.value || 'CNY';
+        if (cur === 'CNY' || cur === 'RMB') rmb += amt;
+        else if (cur === 'U') u += amt;
+        else if (cur === 'USD') usd += amt;
+        else other += amt;
+    });
+    const parts = [];
+    if (rmb > 0) parts.push('<span class="text-success">RMB ' + rmb.toFixed(2) + '</span>');
+    if (u   > 0) parts.push('<span class="text-primary">U ' + u.toFixed(2) + '</span>');
+    if (usd > 0) parts.push('<span class="text-info">USD ' + usd.toFixed(2) + '</span>');
+    if (other > 0) parts.push(other.toFixed(2));
+    document.getElementById('batchTotalCell').innerHTML =
+        parts.length ? parts.join(' + ') + '&nbsp;&nbsp;<span class="text-muted small">(' + rows.length + ' 条)</span>'
+                     : '<span class="text-muted">—</span>';
+}
+
+function _esc(s) { return s.replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+window.submitBatch = function() {
+    const month = document.getElementById('batchMonth').value;
+    const applicant = document.getElementById('batchApplicant').value;
+    if (!month) { _alert('请填写报销月份'); return; }
+
+    const rows = document.querySelectorAll('#batchRows tr');
+    if (!rows.length) { _alert('没有可提交的项目'); return; }
+
+    const items = [];
+    let valid = true;
+    rows.forEach(tr => {
+        const desc = tr.querySelector('.batch-desc').value.trim();
+        const amount = tr.querySelector('.batch-amount').value;
+        const currency = tr.querySelector('.batch-currency').value;
+        if (!desc) { _alert('描述不能为空'); valid = false; return; }
+        if (!amount) { _alert('金额不能为空'); valid = false; return; }
+        items.push({
+            expenseMonth: month,
+            category: '其他',
+            description: desc,
+            amount: amount,
+            currency: currency,
+            applicant: applicant,
+            imagePath: _ocrImagePath,
+            expenseDate: '',
+            remarks: ''
+        });
+    });
+    if (!valid || !items.length) return;
+
+    fetch('/api/finance/expenses/batch', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({items})
+    }).then(r => r.json()).then(resp => {
+        if (resp.success) {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('expModal')).hide();
+            loadContent('/finance/expenses');
+        } else _alert('提交失败: ' + resp.message);
+    });
+};
+
+function lastMonth() {
+    const d = new Date(); d.setMonth(d.getMonth() - 1);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+window.openAdd = function() {
+    document.getElementById('expModalTitle').textContent = '新增报销';
+    document.getElementById('expId').value = '';
+    document.getElementById('expImagePath').value = '';
+    document.getElementById('expImageFile').value = '';
+    document.getElementById('expImagePreview').style.display = 'none';
+    document.getElementById('ocrStatus').innerHTML = '';
+    ['expDesc','expAmount','expRemarks'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('expDate').value = new Date().toISOString().slice(0, 10);
+    _setSelect('expApplicant', "{{ uname }}");
+    document.getElementById('expMonth').value = lastMonth();
+    document.getElementById('expCurrency').value = 'CNY';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('expModal')).show();
+};
+window.openEdit = function(id) {
+    fetch('/api/finance/expenses/' + id).then(r => r.json()).then(resp => {
+        const e = resp.data;
+        document.getElementById('expModalTitle').textContent = '编辑报销';
+        document.getElementById('expId').value = e.id || '';
+        document.getElementById('expMonth').value = e.expenseMonth || '';
+        document.getElementById('expCategory').value = e.category || '差旅';
+        _setSelect('expApplicant', e.applicant || '');
+        document.getElementById('expDesc').value = e.description || '';
+        document.getElementById('expAmount').value = e.amount || '';
+        document.getElementById('expCurrency').value = e.currency || 'CNY';
+        document.getElementById('expDate').value = e.expenseDate || '';
+        document.getElementById('expRemarks').value = e.remarks || '';
+        document.getElementById('expImagePath').value = e.imagePath || '';
+        document.getElementById('expImageFile').value = '';
+        document.getElementById('ocrStatus').innerHTML = '';
+        if (e.imagePath) {
+            document.getElementById('expImageThumb').src = e.imagePath;
+            document.getElementById('expImagePreview').style.display = 'block';
+        } else {
+            document.getElementById('expImagePreview').style.display = 'none';
+        }
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('expModal')).show();
+    });
+};
+window.saveExpense = function() {
+    const id = document.getElementById('expId').value;
+    const body = {
+        expenseMonth: document.getElementById('expMonth').value,
+        category: document.getElementById('expCategory').value,
+        applicant: document.getElementById('expApplicant').value,
+        description: document.getElementById('expDesc').value,
+        amount: document.getElementById('expAmount').value || null,
+        currency: document.getElementById('expCurrency').value,
+        expenseDate: document.getElementById('expDate').value,
+        imagePath: document.getElementById('expImagePath').value || null,
+        remarks: document.getElementById('expRemarks').value
+    };
+    if (!body.expenseMonth) { _alert('请填写报销月份'); return; }
+    if (!body.description) { _alert('描述不能为空'); return; }
+    fetch(id ? '/api/finance/expenses/' + id : '/api/finance/expenses', {
+        method: id ? 'PUT' : 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+    }).then(r => r.json()).then(resp => {
+        if (resp.success) {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('expModal')).hide();
+            loadContent('/finance/expenses');
+        } else _alert('保存失败: ' + resp.message);
+    });
+};
+window.approveExpense = function(id) {
+    _confirm('确认审批通过？', function() {
+        fetch('/api/finance/expenses/' + id + '/approve', {method:'PUT'})
+            .then(r => r.json()).then(resp => { if (resp.success) loadContent('/finance/expenses'); else _alert(resp.message); });
+    });
+};
+window.rejectExpense = function(id) {
+    _confirm('确认拒绝？', function() {
+        fetch('/api/finance/expenses/' + id + '/reject', {method:'PUT'})
+            .then(r => r.json()).then(resp => { if (resp.success) loadContent('/finance/expenses'); else _alert(resp.message); });
+    }, true);
+};
+window.delExpense = function(id) {
+    _confirm('确认删除？', function() {
+        fetch('/api/finance/expenses/' + id, {method:'DELETE'})
+            .then(r => r.json()).then(resp => { if (resp.success) loadContent('/finance/expenses'); else _alert(resp.message); });
+    }, true);
+};
+</script>

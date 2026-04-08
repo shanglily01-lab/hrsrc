@@ -1,0 +1,183 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-bar-chart"></i>资金报表</h4>
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>新增记录</button>
+    </div>
+
+    <div class="d-flex gap-2 mb-3 align-items-center">
+        <select class="form-select form-select-sm" id="fundPeriod" style="max-width:200px">
+            <option value="">全部周期</option>
+            {% for p in periods %}
+            <option value="{{ p }}" {{ 'selected' if p == selectedPeriod else '' }}>{{ p }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-outline-secondary btn-sm px-3"
+                onclick="loadContent('/finance/funds?period='+encodeURIComponent(document.getElementById('fundPeriod').value))">筛选</button>
+        {% if selectedPeriod %}
+        <button class="btn btn-outline-secondary btn-sm" onclick="loadContent('/finance/funds')">重置</button>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>周期</th><th>网络</th><th>资产</th>
+                            <th>充值</th><th>提现</th><th>合约余额</th><th>Owner余额</th>
+                            <th>记录日期</th><th>备注</th><th style="width:80px">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in records %}
+                        <tr>
+                            <td class="small font-monospace">{{ r.period }}</td>
+                            <td>
+                                <span class="badge rounded-pill {{ 'bg-danger' if r.network == 'TRON' else ('bg-primary' if r.network == 'ETH' else ('bg-warning text-dark' if r.network == 'BSC' else ('bg-success' if r.network == 'SOLANA' else 'bg-secondary'))) }}">
+                                    {{ r.network }}
+                                </span>
+                            </td>
+                            <td class="small fw-500">{{ r.asset_type }}</td>
+                            <td class="small text-success">{{ r.recharge_amount }}</td>
+                            <td class="small text-danger">{{ r.withdraw_amount }}</td>
+                            <td class="small fw-500">{{ r.contract_balance }}</td>
+                            <td class="small">{{ r.owner_balance }}</td>
+                            <td class="small font-monospace text-muted">{{ r.record_date }}</td>
+                            <td class="small text-muted" style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="{{ r.remarks }}">{{ r.remarks }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary py-0 px-2 me-1" onclick="openEdit({{ r.id }})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="delFund({{ r.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="10" class="text-center text-muted py-5">
+                            <i class="bi bi-bar-chart d-block mb-2 fs-3 opacity-25"></i>暂无数据，请先导入 Excel
+                        </td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="fundModal" tabindex="-1">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title" id="fundModalTitle">新增资金记录</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="fundId">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">周期 *</label>
+                    <input type="text" class="form-control" id="fundPeriod" placeholder="如 3.30-4.6">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">网络</label>
+                    <select class="form-select" id="fundNetwork">
+                        <option>TRON</option><option>TON</option><option>ETH</option>
+                        <option>BSC</option><option>SOLANA</option><option>TEST</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">资产类型</label>
+                    <select class="form-select" id="fundAsset">
+                        <option>USDT</option><option>USDC</option><option>TRX</option>
+                        <option>BNB</option><option>SOL</option><option>ETH</option><option>U</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">充值金额</label>
+                    <input type="number" step="0.0001" class="form-control" id="fundRecharge">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">提现金额</label>
+                    <input type="number" step="0.0001" class="form-control" id="fundWithdraw">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">合约余额</label>
+                    <input type="number" step="0.0001" class="form-control" id="fundContractBal">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Owner余额</label>
+                    <input type="number" step="0.0001" class="form-control" id="fundOwnerBal">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">记录日期</label>
+                    <input type="text" class="form-control" id="fundRecordDate" placeholder="如 2025-01-01">
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label small text-muted">备注</label>
+                    <input type="text" class="form-control" id="fundRemarks">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveFund()"><i class="bi bi-check-lg me-1"></i>保存</button>
+        </div>
+    </div></div>
+</div>
+
+<script>
+const fundModal = new bootstrap.Modal(document.getElementById('fundModal'));
+window.openAdd = function() {
+    document.getElementById('fundModalTitle').textContent = '新增资金记录';
+    document.getElementById('fundId').value = '';
+    ['fundPeriod','fundRecharge','fundWithdraw','fundContractBal','fundOwnerBal','fundRecordDate','fundRemarks'].forEach(id => document.getElementById(id).value = '');
+    fundModal.show();
+};
+window.openEdit = function(id) {
+    fetch('/api/finance/funds/' + id).then(r => r.json()).then(resp => {
+        const r = resp.data;
+        document.getElementById('fundModalTitle').textContent = '编辑资金记录';
+        document.getElementById('fundId').value = r.id || '';
+        document.getElementById('fundPeriod').value = r.period || '';
+        document.getElementById('fundNetwork').value = r.network || 'TRON';
+        document.getElementById('fundAsset').value = r.assetType || 'USDT';
+        document.getElementById('fundRecharge').value = r.rechargeAmount || '';
+        document.getElementById('fundWithdraw').value = r.withdrawAmount || '';
+        document.getElementById('fundContractBal').value = r.contractBalance || '';
+        document.getElementById('fundOwnerBal').value = r.ownerBalance || '';
+        document.getElementById('fundRecordDate').value = r.recordDate || '';
+        document.getElementById('fundRemarks').value = r.remarks || '';
+        fundModal.show();
+    });
+};
+window.saveFund = function() {
+    const id = document.getElementById('fundId').value;
+    const body = {
+        period: document.getElementById('fundPeriod').value,
+        network: document.getElementById('fundNetwork').value,
+        assetType: document.getElementById('fundAsset').value,
+        rechargeAmount: document.getElementById('fundRecharge').value || null,
+        withdrawAmount: document.getElementById('fundWithdraw').value || null,
+        contractBalance: document.getElementById('fundContractBal').value || null,
+        ownerBalance: document.getElementById('fundOwnerBal').value || null,
+        recordDate: document.getElementById('fundRecordDate').value,
+        remarks: document.getElementById('fundRemarks').value
+    };
+    if (!body.period) { _alert('周期不能为空'); return; }
+    fetch(id ? '/api/finance/funds/' + id : '/api/finance/funds', {
+        method: id ? 'PUT' : 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+    }).then(r => r.json()).then(resp => {
+        if (resp.success) { fundModal.hide(); loadContent('/finance/funds'); }
+        else _alert('保存失败: ' + resp.message);
+    });
+};
+window.delFund = function(id) {
+    _confirm('确认删除？', function() {
+        fetch('/api/finance/funds/' + id, {method:'DELETE'})
+            .then(r => r.json()).then(resp => { if (resp.success) loadContent('/finance/funds'); else _alert(resp.message); });
+    }, true);
+};
+</script>

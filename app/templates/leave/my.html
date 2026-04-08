@@ -1,0 +1,121 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-calendar-check"></i>我的请假</h4>
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>申请请假</button>
+    </div>
+
+    {% if not apps %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-calendar-x d-block mb-2 fs-2 opacity-25"></i>暂无请假记录
+    </div>
+    {% else %}
+    <div class="row g-3">
+        {% for a in apps %}
+        <div class="col-md-6">
+            <div class="card h-100" style="border-left:4px solid {{ '#f59e0b' if a.status=='PENDING' else ('#10b981' if a.status=='APPROVED' else ('#ef4444' if a.status=='REJECTED' else '#6b7280')) }} !important">
+                <div class="card-body">
+                    <div class="d-flex align-items-start justify-content-between mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge rounded-pill {{ 'bg-warning text-dark' if a.leave_type=='年假' else ('bg-danger' if a.leave_type=='病假' else 'bg-secondary') }}">{{ a.leave_type }}</span>
+                            <span class="small text-muted">{{ a.start_date }} ~ {{ a.end_date }}</span>
+                        </div>
+                        <span class="badge rounded-pill {{ 'bg-warning text-dark' if a.status=='PENDING' else ('bg-success' if a.status=='APPROVED' else ('bg-danger' if a.status=='REJECTED' else 'bg-secondary')) }}">
+                            {% if a.status=='PENDING' %}<i class="bi bi-hourglass-split me-1"></i>待审批
+                            {% elif a.status=='APPROVED' %}<i class="bi bi-check-circle me-1"></i>已批准
+                            {% elif a.status=='REJECTED' %}<i class="bi bi-x-circle me-1"></i>已拒绝
+                            {% else %}<i class="bi bi-dash-circle me-1"></i>已取消{% endif %}
+                        </span>
+                    </div>
+                    <p class="text-secondary small mb-2" style="line-height:1.6">{{ a.reason or '无原因说明' }}</p>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="text-muted" style="font-size:.75rem">
+                            <i class="bi bi-clock me-1"></i>{{ a.duration }}天 &nbsp;
+                            <i class="bi bi-calendar3 me-1"></i>{{ a.created_at or '' }}
+                        </div>
+                        {% if a.status == 'PENDING' %}
+                        <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="cancelLeave({{ a.id }})">
+                            <i class="bi bi-x me-1"></i>撤销
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% if a.approval_comment %}
+                    <div class="mt-2 p-2 rounded-2 bg-light small text-muted">
+                        <i class="bi bi-chat-left-text me-1"></i>{{ a.approval_comment }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="leaveModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title">申请请假</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">请假类型</label>
+                    <select class="form-select" id="leaveType">
+                        <option value="年假">年假</option>
+                        <option value="病假">病假</option>
+                        <option value="事假">事假</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">部门</label>
+                    <input type="text" class="form-control" id="leaveDept" placeholder="所在部门">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">开始日期</label>
+                    <input type="date" class="form-control" id="leaveStart">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">结束日期</label>
+                    <input type="date" class="form-control" id="leaveEnd">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">时长（天）</label>
+                    <input type="number" class="form-control" id="leaveDuration" min="0.5" step="0.5" placeholder="1">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted">请假原因</label>
+                    <textarea class="form-control" id="leaveReason" rows="3" placeholder="请描述请假原因..."></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="submitLeave()"><i class="bi bi-send me-1"></i>提交申请</button>
+        </div>
+    </div></div>
+</div>
+<script>
+const leaveModal = new bootstrap.Modal(document.getElementById('leaveModal'));
+window.openAdd = function() { leaveModal.show(); };
+window.submitLeave = function() {
+    const body = {
+        leaveType: document.getElementById('leaveType').value,
+        department: document.getElementById('leaveDept').value,
+        startDate: document.getElementById('leaveStart').value,
+        endDate: document.getElementById('leaveEnd').value,
+        duration: document.getElementById('leaveDuration').value,
+        reason: document.getElementById('leaveReason').value
+    };
+    if (!body.startDate || !body.endDate) { _alert('请选择日期'); return; }
+    fetch('/api/leave-applications', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) })
+        .then(r=>r.json()).then(resp=>{ if(resp.success){leaveModal.hide();loadContent('/leave/my');}else _alert(resp.message); });
+};
+window.cancelLeave = function(id) {
+    _confirm('确认撤销申请？', function() {
+        fetch('/api/leave-applications/'+id+'/cancel',{method:'PUT'})
+            .then(r=>r.json()).then(resp=>{if(resp.success)loadContent('/leave/my');});
+    }, true);
+};
+</script>

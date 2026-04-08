@@ -1,0 +1,60 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-shield-lock"></i>用户安全码</h4>
+        <span class="text-muted small">{{ secs | length }} 人</span>
+    </div>
+
+    {% if not secs %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-shield-x d-block mb-2 fs-2 opacity-25"></i>暂无数据
+    </div>
+    {% else %}
+    <div class="row g-3">
+        {% for s in secs %}
+        <div class="col-md-4 col-sm-6">
+            <div class="card h-100" style="border-top: 3px solid {{ 'var(--primary-color)' if s[2] else '#e5e7eb' }} !important">
+                <div class="card-body d-flex flex-column gap-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+                             style="width:44px;height:44px;font-size:1.1rem;background:{{ 'var(--primary-color)' if s[2] else '#9ca3af' }}">
+                            {{ s[1][0] | upper if s[1] else '?' }}
+                        </div>
+                        <div>
+                            <div class="fw-500">{{ s[1] }}</div>
+                            <div class="text-muted" style="font-size:.75rem">
+                                {% if s[2] %}
+                                <span class="text-success"><i class="bi bi-shield-check me-1"></i>已设置</span>
+                                {% else %}
+                                <span class="text-muted"><i class="bi bi-shield me-1"></i>未设置</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="rounded-3 px-3 py-2 d-flex align-items-center justify-content-between"
+                         style="background:#f3f4f6;min-height:40px">
+                        {% if s[2] %}
+                        <span class="font-monospace fw-500" style="letter-spacing:.15em;font-size:.95rem">{{ s[2] }}</span>
+                        <button class="btn btn-sm p-0 text-muted border-0" style="background:none"
+                                onclick="copyCode(this,'{{ s[2] }}')" title="复制">
+                            <i class="bi bi-copy"></i>
+                        </button>
+                        {% else %}
+                        <span class="text-muted small">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+<script>
+window.copyCode = function(btn, code) {
+    navigator.clipboard.writeText(code).then(() => {
+        btn.innerHTML = '<i class="bi bi-check2"></i>';
+        btn.classList.replace('text-muted', 'text-success');
+        setTimeout(() => { btn.innerHTML = '<i class="bi bi-copy"></i>'; btn.classList.replace('text-success', 'text-muted'); }, 1500);
+    });
+};
+</script>

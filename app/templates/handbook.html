@@ -1,0 +1,66 @@
+<div class="container-fluid" style="max-width:800px">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-journal-text"></i>员工守则</h4>
+    </div>
+
+    {% if not grouped %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-journal-x d-block mb-2 fs-2 opacity-25"></i>暂无内容
+    </div>
+    {% else %}
+
+    <!-- 目录导航 -->
+    <div class="card mb-4">
+        <div class="card-body py-3 px-4">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="bi bi-list-ul text-primary"></i>
+                <span class="fw-500 small">目录</span>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                {% for seg, group in grouped.items() %}
+                <a href="#chapter-{{ seg }}" class="btn btn-outline-primary btn-sm py-0 px-3" style="font-size:.8rem">
+                    第 {{ seg }} 章
+                    <span class="badge bg-primary bg-opacity-15 text-primary ms-1 rounded-pill" style="font-size:.65rem">{{ group | length }}</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 章节内容 -->
+    {% for seg, group in grouped.items() %}
+    <div class="mb-4" id="chapter-{{ seg }}">
+        <!-- 章节标题 -->
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+                 style="width:42px;height:42px;border-radius:50%;background:var(--primary-color);font-size:1rem">
+                {{ seg }}
+            </div>
+            <div>
+                <div class="fw-500" style="font-size:1rem">第 {{ seg }} 章</div>
+                <div class="text-muted" style="font-size:.75rem">共 {{ group | length }} 条规定</div>
+            </div>
+        </div>
+
+        <!-- 条款列表 -->
+        <div class="card">
+            <div class="card-body p-0">
+                {% for b in group %}
+                <div class="d-flex gap-3 px-4 py-3 {{ 'border-top' if not loop.first else '' }}"
+                     style="{{ 'background:#fafbff' if loop.index is odd else '' }}">
+                    <div class="flex-shrink-0 d-flex align-items-start pt-1">
+                        <span class="badge rounded-pill text-primary px-2"
+                              style="background:rgba(75,108,183,.1);font-size:.7rem;min-width:2rem;line-height:1.4">
+                            {{ seg }}.{{ loop.index }}
+                        </span>
+                    </div>
+                    <div class="text-secondary" style="line-height:1.9;font-size:.9rem">{{ b.books }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% endif %}
+</div>

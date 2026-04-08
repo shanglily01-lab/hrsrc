@@ -1,0 +1,78 @@
+<div class="container-fluid" style="max-width:560px">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-calendar-check"></i>打卡</h4>
+    </div>
+    <div class="card mb-4">
+        <div class="card-body text-center py-4">
+            <div id="clockDisplay" class="font-monospace fw-bold text-primary mb-1" style="font-size:2.8rem;letter-spacing:.1em;font-family:'Inter',monospace">00:00:00</div>
+            <div class="text-muted small mb-3" id="dateDisplay">{{ today }}</div>
+            <div class="d-flex gap-2 justify-content-center mb-3">
+                {% set has_am = records | selectattr('ampm','eq','AM') | list | length > 0 %}
+                {% set has_pm = records | selectattr('ampm','eq','PM') | list | length > 0 %}
+                <span id="amStatus" class="badge rounded-pill px-3 py-2 fs-6 {{ 'bg-success' if has_am else 'bg-secondary bg-opacity-25 text-secondary' }}">
+                    <i class="bi bi-sun me-1"></i>上班 {{ (records | selectattr('ampm','eq','AM') | list | first).hinttime if has_am else '--:--' }}
+                </span>
+                <span id="pmStatus" class="badge rounded-pill px-3 py-2 fs-6 {{ 'bg-primary' if has_pm else 'bg-secondary bg-opacity-25 text-secondary' }}">
+                    <i class="bi bi-moon me-1"></i>下班 {{ (records | selectattr('ampm','eq','PM') | list | first).hinttime if has_pm else '--:--' }}
+                </span>
+            </div>
+            <div class="d-flex gap-3 justify-content-center">
+                <button class="btn btn-success px-4" onclick="doHint('AM')" {{ 'disabled' if has_am else '' }}>
+                    <i class="bi bi-clock me-1"></i>上班打卡
+                </button>
+                <button class="btn btn-outline-primary px-4" onclick="doHint('PM')" {{ 'disabled' if has_pm else '' }}>
+                    <i class="bi bi-clock-history me-1"></i>下班打卡
+                </button>
+            </div>
+            <div id="hintMsg" class="mt-3"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex align-items-center gap-2">
+            <i class="bi bi-list-ul text-primary"></i>今日打卡记录
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead><tr><th>类型</th><th>打卡时间</th></tr></thead>
+                <tbody>
+                    {% for r in records %}
+                    <tr>
+                        <td><span class="badge rounded-pill {{ 'bg-success' if r.ampm == 'AM' else 'bg-primary' }}">{{ '上班' if r.ampm == 'AM' else '下班' }}</span></td>
+                        <td class="font-monospace">{{ r.hinttime }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="2" class="text-center text-muted py-4">
+                        <i class="bi bi-clock d-block mb-2 fs-4"></i>今日暂无打卡记录
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function tick() {
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2,'0');
+        const m = String(now.getMinutes()).padStart(2,'0');
+        const s = String(now.getSeconds()).padStart(2,'0');
+        const el = document.getElementById('clockDisplay');
+        if (el) el.textContent = h+':'+m+':'+s;
+    }
+    tick(); setInterval(tick, 1000);
+})();
+window.doHint = function(ampm) {
+    fetch('/api/hintCard', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ampm:ampm}) })
+        .then(r=>r.json()).then(resp=>{
+            const msg = document.getElementById('hintMsg');
+            if (resp.success) {
+                msg.innerHTML = '<div class="alert alert-success py-2 small rounded-3"><i class="bi bi-check-circle me-1"></i>'+resp.message+'</div>';
+                setTimeout(()=>loadContent('/hintCard'), 1200);
+            } else {
+                msg.innerHTML = '<div class="alert alert-danger py-2 small rounded-3">'+resp.message+'</div>';
+            }
+        });
+};
+</script>

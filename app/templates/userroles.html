@@ -1,0 +1,91 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-person-badge"></i>用户角色</h4>
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>分配角色</button>
+    </div>
+
+    {% if not users %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-person-badge d-block mb-2 fs-2 opacity-25"></i>暂无数据
+    </div>
+    {% else %}
+    <div class="row g-3">
+        {% for u in users %}
+        {% set u_rows = rows | selectattr('uid','eq',u.id) | list %}
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <!-- 用户信息 -->
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+                             style="width:38px;height:38px;font-size:.95rem;background:{{ 'var(--primary-dark)' if u.uname == 'admin' else 'var(--primary-color)' }}">
+                            {{ u.uname[0] | upper }}
+                        </div>
+                        <div>
+                            <div class="fw-500 small">{{ u.uname }}</div>
+                            <div style="font-size:.7rem" class="text-muted">{{ u_rows | length }} 个角色</div>
+                        </div>
+                    </div>
+
+                    <!-- 已分配角色 -->
+                    <div class="d-flex flex-wrap gap-1 min-height-tags">
+                        {% for r in u_rows %}
+                        {% set robj = roles | selectattr('id','eq',r.rid) | first | default(None) %}
+                        <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary d-inline-flex align-items-center gap-1" style="font-size:.72rem">
+                            <i class="bi bi-shield-fill" style="font-size:.6rem"></i>
+                            {{ robj.rname if robj else r.rid }}
+                            <span style="cursor:pointer;opacity:.6;margin-left:2px" onclick="delRow({{ r.id }})" title="移除">&times;</span>
+                        </span>
+                        {% else %}
+                        <span class="text-muted small">未分配角色</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="urModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title">分配角色</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <div class="mb-3">
+                <label class="form-label small text-muted">用户 *</label>
+                <select class="form-select" id="urUid">
+                    {% for u in users %}<option value="{{ u.id }}">{{ u.uname }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="mb-2">
+                <label class="form-label small text-muted">角色 *</label>
+                <select class="form-select" id="urRid">
+                    {% for r in roles %}<option value="{{ r.id }}">{{ r.rname }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveRow()"><i class="bi bi-check-lg me-1"></i>保存</button>
+        </div>
+    </div></div>
+</div>
+<script>
+const urModal = new bootstrap.Modal(document.getElementById('urModal'));
+window.openAdd = function() { urModal.show(); };
+window.saveRow = function() {
+    const uid = parseInt(document.getElementById('urUid').value);
+    const rid = parseInt(document.getElementById('urRid').value);
+    fetch('/api/userrole', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({uid: uid, rid: rid}) })
+        .then(r => r.json()).then(resp => { if (resp.success) { urModal.hide(); loadContent('/userroles'); } else _alert(resp.message); });
+};
+window.delRow = function(id) {
+    _confirm('确认移除该角色？', function() {
+        fetch('/api/userrole/' + id, {method:'DELETE'}).then(r => r.json()).then(resp => { if (resp.success) loadContent('/userroles'); });
+    }, true);
+};
+</script>

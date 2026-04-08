@@ -1,0 +1,321 @@
+<div class="container-fluid" style="max-width:760px">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-person-circle"></i>个人信息</h4>
+    </div>
+
+    {% if is_admin %}
+    <!-- Admin 用户选择器 -->
+    <div class="card mb-3">
+        <div class="card-body py-2 d-flex align-items-center gap-3">
+            <i class="bi bi-people text-primary"></i>
+            <span class="small text-muted fw-500">查看用户：</span>
+            <select class="form-select form-select-sm" style="max-width:240px"
+                    onchange="if(this.value) loadContent('/profile?view_uid='+this.value)">
+                {% for u in all_users %}
+                <option value="{{ u.id }}" {{ 'selected' if u.id == view_uid else '' }}>
+                    {{ u.uname }}{% if u.id == user.id %} (我){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+            {% if view_uid != user.id %}
+            <button class="btn btn-outline-secondary btn-sm py-0 px-2"
+                    onclick="loadContent('/profile')">
+                <i class="bi bi-person me-1"></i>查看自己
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 头部 -->
+    <div class="card mb-3">
+        <div class="card-body d-flex align-items-center gap-3 py-3">
+            <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+                 style="width:52px;height:52px;font-size:1.3rem">
+                {{ target_user.uname[0] | upper }}
+            </div>
+            <div>
+                <div class="fw-semibold fs-6">{{ target_user.uname }}</div>
+                {% if emp %}
+                <div class="text-muted small">{{ emp.position or '' }}{% if emp.team %} · {{ emp.team }}{% endif %}</div>
+                {% endif %}
+                <div class="text-muted" style="font-size:.72rem">上次更新：{{ profile.udate if profile and profile.udate else '尚未更新' }}</div>
+            </div>
+            {% if emp %}
+            <div class="ms-auto d-flex gap-2 flex-wrap justify-content-end">
+                <span class="badge rounded-pill {{ 'bg-success' if emp.is_formal and '转正' in emp.is_formal else 'bg-secondary bg-opacity-10 text-secondary' }}">
+                    {{ emp.is_formal or '试用中' }}
+                </span>
+                {% if emp.currency %}
+                <span class="badge rounded-pill {{ 'bg-primary text-white' if emp.currency == 'U' else 'bg-success text-white' }}">
+                    {{ emp.currency }}
+                </span>
+                {% endif %}
+                {% if emp.entry_date %}
+                <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary">
+                    <i class="bi bi-calendar3 me-1"></i>{{ emp.entry_date }}
+                </span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if emp %}
+    <!-- 薪资信息（只读） -->
+    <div class="card mb-3">
+        <div class="card-header py-2 d-flex align-items-center gap-2">
+            <i class="bi bi-currency-exchange text-success"></i>
+            <span class="fw-500 small">薪资信息</span>
+            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill ms-1" style="font-size:.65rem">只读</span>
+            <button class="btn btn-link btn-sm p-0 ms-auto text-secondary" id="salaryToggle"
+                    onclick="toggleSalary()" title="显示/隐藏薪资">
+                <i class="bi bi-eye-slash" id="salaryEyeIcon"></i>
+            </button>
+        </div>
+        <div class="card-body py-3" id="salaryBody">
+            <div class="row g-3 text-center">
+                <div class="col-4">
+                    <div class="text-muted" style="font-size:.72rem">试用薪资</div>
+                    <div class="fw-500 salary-val" data-val="{{ emp.trial_salary or '—' }}">••••</div>
+                </div>
+                <div class="col-4">
+                    <div class="text-muted" style="font-size:.72rem">转正薪资</div>
+                    <div class="fw-500 salary-val" data-val="{{ emp.formal_salary or '—' }}">••••</div>
+                </div>
+                <div class="col-4">
+                    <div class="text-muted" style="font-size:.72rem">当前薪资</div>
+                    <div class="fw-bold text-primary salary-val" data-val="{{ emp.adjusted_salary or emp.formal_salary or '—' }}">••••</div>
+                </div>
+                {% if emp.salary_adjust_date %}
+                <div class="col-12 text-muted salary-val" style="font-size:.72rem"
+                     data-val="调薪日期：{{ emp.salary_adjust_date }}">••••••</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 联系信息 -->
+    <div class="card mb-3">
+        <div class="card-header py-2 d-flex align-items-center gap-2">
+            <i class="bi bi-person-lines-fill text-primary"></i>
+            <span class="fw-500 small">联系信息</span>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">邮箱</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                        <input type="text" class="form-control" id="email" value="{{ profile.email if profile else '' }}" placeholder="your@email.com">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">TG 账号</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-telegram"></i></span>
+                        <input type="text" class="form-control" id="tg" value="{{ profile.tg if profile else '' }}" placeholder="@username">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">WhatsApp</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-whatsapp"></i></span>
+                        <input type="text" class="form-control" id="whatsapp" value="{{ profile.whatsapp if profile else '' }}">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">电话</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                        <input type="text" class="form-control" id="phone" value="{{ profile.phone if profile else '' }}">
+                    </div>
+                </div>
+                <!-- TRC20 -->
+                <div class="col-12">
+                    <label class="form-label small text-muted">
+                        TRC20 地址（稳定币）
+                        {% if is_admin %}<span class="badge bg-warning bg-opacity-10 text-warning rounded-pill ms-1" style="font-size:.65rem">同步至员工档案</span>{% endif %}
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-currency-dollar"></i></span>
+                        <input type="text" class="form-control font-monospace" id="saddr"
+                               value="{{ profile.saddr if profile else (emp.saddr if emp else '') }}"
+                               placeholder="USDT TRC20 钱包地址"
+                               {{ 'readonly' if not is_admin }}>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted">TRC20 收款二维码</label>
+                    {% if is_admin %}
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <label class="btn btn-outline-secondary btn-sm" title="上传二维码图片">
+                            <i class="bi bi-image me-1"></i>上传图片
+                            <input type="file" id="saddrImgFile" accept="image/*" style="display:none"
+                                   onchange="uploadFile('saddr_img','saddrImgFile','saddrPreview','saddr')">
+                        </label>
+                        {% if profile and profile.saddr_img %}<span class="text-muted small">已上传</span>{% endif %}
+                    </div>
+                    {% endif %}
+                    {% if profile and profile.saddr_img %}
+                    <div id="saddrPreview" class="mt-1">
+                        <img src="{{ profile.saddr_img }}" alt="TRC20 收款二维码" class="rounded-3 border" style="max-height:180px;max-width:100%;object-fit:contain">
+                    </div>
+                    {% else %}
+                    <div id="saddrPreview" class="mt-1"></div>
+                    {% endif %}
+                </div>
+                <!-- ERC20 -->
+                <div class="col-12">
+                    <label class="form-label small text-muted">
+                        ERC20 地址（其他）
+                        {% if is_admin %}<span class="badge bg-warning bg-opacity-10 text-warning rounded-pill ms-1" style="font-size:.65rem">同步至员工档案</span>{% endif %}
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-wallet2"></i></span>
+                        <input type="text" class="form-control font-monospace" id="vaddr"
+                               value="{{ profile.vaddr if profile else (emp.vaddr if emp else '') }}"
+                               placeholder="ERC20 钱包地址"
+                               {{ 'readonly' if not is_admin }}>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted">ERC20 收款二维码</label>
+                    {% if is_admin %}
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <label class="btn btn-outline-secondary btn-sm" title="上传二维码图片">
+                            <i class="bi bi-image me-1"></i>上传图片
+                            <input type="file" id="vaddrImgFile" accept="image/*" style="display:none"
+                                   onchange="uploadFile('vaddr_img','vaddrImgFile','vaddrPreview','vaddr')">
+                        </label>
+                        {% if profile and profile.vaddr_img %}<span class="text-muted small">已上传</span>{% endif %}
+                    </div>
+                    {% endif %}
+                    {% if profile and profile.vaddr_img %}
+                    <div id="vaddrPreview" class="mt-1">
+                        <img src="{{ profile.vaddr_img }}" alt="ERC20 收款二维码" class="rounded-3 border" style="max-height:180px;max-width:100%;object-fit:contain">
+                    </div>
+                    {% else %}
+                    <div id="vaddrPreview" class="mt-1"></div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 安全码 -->
+    <div class="card mb-3">
+        <div class="card-header py-2 d-flex align-items-center gap-2">
+            <i class="bi bi-shield-lock text-danger"></i>
+            <span class="fw-500 small">安全码</span>
+        </div>
+        <div class="card-body">
+            {% if sec and sec.scode %}
+            <div class="input-group" style="max-width:340px">
+                <span class="input-group-text"><i class="bi bi-key"></i></span>
+                <input type="text" class="form-control font-monospace" id="scodeDisplay"
+                       value="{{ sec.scode }}" readonly
+                       style="background:#f8f9fa;cursor:default">
+                <button class="btn btn-outline-secondary" type="button" id="scodeCopyBtn"
+                        onclick="navigator.clipboard.writeText('{{ sec.scode }}').then(()=>{
+                            document.getElementById('scodeCopyBtn').innerHTML='<i class=\'bi bi-check2\'></i>';
+                            setTimeout(()=>document.getElementById('scodeCopyBtn').innerHTML='<i class=\'bi bi-copy\'></i>',1500);
+                        })" title="复制">
+                    <i class="bi bi-copy"></i>
+                </button>
+            </div>
+            {% if sec.sdate %}
+            <div class="text-muted mt-2" style="font-size:.72rem">上次更新：{{ sec.sdate }}</div>
+            {% endif %}
+            {% else %}
+            <div class="text-muted small"><i class="bi bi-shield me-1"></i>暂未设置安全码</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end mb-4">
+        <button class="btn btn-primary px-5" onclick="saveProfile()">
+            <i class="bi bi-check-lg me-1"></i>保存
+        </button>
+    </div>
+</div>
+
+<script>
+// field: DB field name for the image (e.g. 'saddr_img')
+// fileInputId: the <input type="file"> element id
+// previewId: the preview div id
+// addrFieldId: (optional) text input to auto-fill with decoded QR address
+window.uploadFile = function(field, fileInputId, previewId, addrFieldId) {
+    const fileInput = document.getElementById(fileInputId);
+    const f = fileInput.files[0];
+    if (!f) return;
+    const fd = new FormData();
+    fd.append('field', field);
+    fd.append('file', f);
+    fetch('/api/profile/upload', {method:'POST', body:fd})
+        .then(r => r.json())
+        .then(resp => {
+            if (!resp.success) { _alert(resp.message); return; }
+            const url = resp.data.url;
+            const qrData = resp.data.qr_data;
+            // Auto-fill address field if QR decoded successfully
+            if (qrData && addrFieldId) {
+                document.getElementById(addrFieldId).value = qrData;
+            }
+            // Show image preview
+            const preview = document.getElementById(previewId);
+            preview.innerHTML = '<img src="' + url + '" alt="收款二维码" class="rounded-3 border" style="max-height:180px;max-width:100%;object-fit:contain">';
+        });
+};
+window.saveSecrete = function() {
+    const scode = document.getElementById('scode').value.trim();
+    fetch('/api/profile/secrete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ scode, view_uid: {{ view_uid }} })
+    }).then(r => r.json()).then(resp => {
+        if (resp.success) {
+            const btn = document.querySelector('[onclick="saveSecrete()"]');
+            btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>已保存';
+            btn.classList.replace('btn-outline-primary', 'btn-success');
+            setTimeout(() => {
+                btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>保存安全码';
+                btn.classList.replace('btn-success', 'btn-outline-primary');
+            }, 2000);
+        } else _alert(resp.message);
+    });
+};
+window._salaryVisible = false;
+window.toggleSalary = function() {
+    _salaryVisible = !_salaryVisible;
+    document.querySelectorAll('.salary-val').forEach(el => {
+        el.textContent = _salaryVisible ? el.dataset.val : '••••';
+    });
+    const icon = document.getElementById('salaryEyeIcon');
+    icon.className = _salaryVisible ? 'bi bi-eye' : 'bi bi-eye-slash';
+};
+window.saveProfile = function() {
+    const body = {
+        email:    document.getElementById('email').value,
+        tg:       document.getElementById('tg').value,
+        whatsapp: document.getElementById('whatsapp').value,
+        phone:    document.getElementById('phone').value,
+        saddr:    document.getElementById('saddr').value,
+        vaddr:    document.getElementById('vaddr').value,
+        view_uid: {{ view_uid }},
+    };
+    fetch('/api/profile', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
+        .then(r => r.json()).then(resp => {
+            if (resp.success) {
+                const btn = document.querySelector('[onclick="saveProfile()"]');
+                btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>已保存';
+                btn.classList.replace('btn-primary', 'btn-success');
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>保存';
+                    btn.classList.replace('btn-success', 'btn-primary');
+                }, 2000);
+            } else _alert(resp.message);
+        });
+};
+</script>

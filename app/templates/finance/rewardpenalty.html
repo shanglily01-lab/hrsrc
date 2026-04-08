@@ -1,0 +1,252 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-award"></i>员工奖惩</h4>
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>新增</button>
+    </div>
+
+    <!-- 月份筛选 -->
+    <div class="d-flex gap-2 mb-3 flex-wrap">
+        <button onclick="loadContent('/finance/rewardpenalty')"
+           class="btn btn-sm {{ 'btn-primary' if not selected_month else 'btn-outline-secondary' }}">全部</button>
+        {% for m in all_months %}
+        <button onclick="loadContent('/finance/rewardpenalty?month={{ m }}')"
+           class="btn btn-sm {{ 'btn-primary' if selected_month == m else 'btn-outline-secondary' }}">{{ m }}</button>
+        {% endfor %}
+    </div>
+
+    {% if not grouped %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-award d-block mb-2 fs-2 opacity-25"></i>暂无奖惩记录
+    </div>
+    {% else %}
+    {% for month, recs in grouped.items() %}
+    {% set ns = namespace(reward_u=0, penalty_u=0, reward_rmb=0, penalty_rmb=0) %}
+    {% for r in recs %}
+        {% if r.type == 'REWARD' and r.amount %}
+            {% if r.currency == 'U' %}{% set ns.reward_u = ns.reward_u + r.amount %}
+            {% else %}{% set ns.reward_rmb = ns.reward_rmb + r.amount %}{% endif %}
+        {% elif r.type == 'PENALTY' and r.amount %}
+            {% if r.currency == 'U' %}{% set ns.penalty_u = ns.penalty_u + r.amount %}
+            {% else %}{% set ns.penalty_rmb = ns.penalty_rmb + r.amount %}{% endif %}
+        {% endif %}
+    {% endfor %}
+
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center gap-3 py-2" style="cursor:pointer"
+             onclick="this.nextElementSibling.classList.toggle('d-none')">
+            <i class="bi bi-calendar-month text-primary"></i>
+            <strong>{{ month }}</strong>
+            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill">{{ recs | length }} 条</span>
+            {% if ns.reward_u > 0 %}
+            <span class="badge bg-success text-white rounded-pill"><i class="bi bi-arrow-up-circle me-1"></i>奖励 U {{ "%.2f"|format(ns.reward_u) }}</span>
+            {% endif %}
+            {% if ns.reward_rmb > 0 %}
+            <span class="badge bg-success text-white rounded-pill"><i class="bi bi-arrow-up-circle me-1"></i>奖励 RMB {{ "%.0f"|format(ns.reward_rmb) }}</span>
+            {% endif %}
+            {% if ns.penalty_u > 0 %}
+            <span class="badge bg-danger text-white rounded-pill"><i class="bi bi-arrow-down-circle me-1"></i>处罚 U {{ "%.2f"|format(ns.penalty_u) }}</span>
+            {% endif %}
+            {% if ns.penalty_rmb > 0 %}
+            <span class="badge bg-danger text-white rounded-pill"><i class="bi bi-arrow-down-circle me-1"></i>处罚 RMB {{ "%.0f"|format(ns.penalty_rmb) }}</span>
+            {% endif %}
+            <i class="bi bi-chevron-down small text-muted ms-auto"></i>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:.83rem">
+                <thead>
+                    <tr>
+                        <th>员工</th>
+                        <th>类型</th>
+                        <th>币种</th>
+                        <th>金额</th>
+                        <th>原因说明</th>
+                        <th style="width:90px">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in recs %}
+                    <tr>
+                        <td class="fw-500">{{ r.tg_name }}</td>
+                        <td>
+                            {% if r.type == 'REWARD' %}
+                            <span class="badge rounded-pill bg-success text-white"><i class="bi bi-arrow-up-circle me-1"></i>奖励</span>
+                            {% else %}
+                            <span class="badge rounded-pill bg-danger text-white"><i class="bi bi-arrow-down-circle me-1"></i>处罚</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge rounded-pill {{ 'bg-primary text-white' if r.currency == 'U' else 'bg-success text-white' }}">{{ r.currency }}</span>
+                        </td>
+                        <td class="fw-500 {{ 'text-success' if r.type == 'REWARD' else 'text-danger' }}">
+                            {{ "%.2f"|format(r.amount) if r.amount else '—' }}
+                        </td>
+                        <td style="max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="{{ r.reason }}">{{ r.reason or '—' }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary py-0 px-2 me-1" onclick="openEdit({{ r.id }})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="delRp({{ r.id }})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <td colspan="3" class="text-muted small">合计</td>
+                        <td colspan="3">
+                            {% if ns.reward_u > 0 %}<span class="text-success me-2">奖励U +{{ "%.2f"|format(ns.reward_u) }}</span>{% endif %}
+                            {% if ns.reward_rmb > 0 %}<span class="text-success me-2">奖励RMB +{{ "%.0f"|format(ns.reward_rmb) }}</span>{% endif %}
+                            {% if ns.penalty_u > 0 %}<span class="text-danger me-2">处罚U -{{ "%.2f"|format(ns.penalty_u) }}</span>{% endif %}
+                            {% if ns.penalty_rmb > 0 %}<span class="text-danger me-2">处罚RMB -{{ "%.0f"|format(ns.penalty_rmb) }}</span>{% endif %}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>
+
+<!-- 新增/编辑弹框 -->
+<div class="modal fade" id="rpModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title" id="rpModalTitle">新增奖惩记录</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="rpId">
+            <div class="row g-3">
+                <div class="col-6">
+                    <label class="form-label small text-muted">月份 <span class="text-danger">*</span></label>
+                    <input type="month" class="form-control" id="rpMonth">
+                </div>
+                <div class="col-6">
+                    <label class="form-label small text-muted">员工 <span class="text-danger">*</span></label>
+                    <select class="form-select" id="rpTgName">
+                        <option value="">请选择</option>
+                        {% for name in emp_names %}
+                        <option value="{{ name }}">{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6">
+                    <label class="form-label small text-muted">类型 <span class="text-danger">*</span></label>
+                    <div class="d-flex gap-3 mt-1">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="rpType" id="rpTypeReward" value="REWARD" checked>
+                            <label class="form-check-label text-success" for="rpTypeReward"><i class="bi bi-arrow-up-circle me-1"></i>奖励</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="rpType" id="rpTypePenalty" value="PENALTY">
+                            <label class="form-check-label text-danger" for="rpTypePenalty"><i class="bi bi-arrow-down-circle me-1"></i>处罚</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label small text-muted">币种 <span class="text-danger">*</span></label>
+                    <select class="form-select" id="rpCurrency">
+                        <option value="U">U</option>
+                        <option value="RMB">RMB</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted">金额 <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text" id="rpAmtPrefix">U</span>
+                        <input type="number" class="form-control" id="rpAmount" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted">原因说明</label>
+                    <textarea class="form-control" id="rpReason" rows="2" placeholder="请填写奖惩原因"></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+            <button class="btn btn-primary" onclick="saveRp()">保存</button>
+        </div>
+    </div></div>
+</div>
+
+<script>
+const _rpModal = new bootstrap.Modal(document.getElementById('rpModal'));
+
+// Update currency prefix when currency changes
+document.getElementById('rpCurrency').addEventListener('change', function() {
+    document.getElementById('rpAmtPrefix').textContent = this.value;
+});
+
+window.openAdd = function() {
+    document.getElementById('rpModalTitle').textContent = '新增奖惩记录';
+    document.getElementById('rpId').value = '';
+    document.getElementById('rpMonth').value = '';
+    document.getElementById('rpTgName').value = '';
+    document.getElementById('rpTypeReward').checked = true;
+    document.getElementById('rpCurrency').value = 'U';
+    document.getElementById('rpAmtPrefix').textContent = 'U';
+    document.getElementById('rpAmount').value = '';
+    document.getElementById('rpReason').value = '';
+    _rpModal.show();
+};
+
+window.openEdit = function(id) {
+    fetch('/api/finance/rewardpenalty/' + id)
+        .then(r => r.json()).then(resp => {
+            if (!resp.success) { _alert(resp.message); return; }
+            const d = resp.data;
+            document.getElementById('rpModalTitle').textContent = '编辑奖惩记录';
+            document.getElementById('rpId').value = d.id;
+            document.getElementById('rpMonth').value = d.month || '';
+            document.getElementById('rpTgName').value = d.tgName || '';
+            document.querySelector(`input[name="rpType"][value="${d.type}"]`).checked = true;
+            document.getElementById('rpCurrency').value = d.currency || 'U';
+            document.getElementById('rpAmtPrefix').textContent = d.currency || 'U';
+            document.getElementById('rpAmount').value = d.amount != null ? d.amount : '';
+            document.getElementById('rpReason').value = d.reason || '';
+            _rpModal.show();
+        });
+};
+
+window.saveRp = function() {
+    const id = document.getElementById('rpId').value;
+    const month = document.getElementById('rpMonth').value;
+    const tgName = document.getElementById('rpTgName').value;
+    const type = document.querySelector('input[name="rpType"]:checked').value;
+    const currency = document.getElementById('rpCurrency').value;
+    const amount = document.getElementById('rpAmount').value;
+    const reason = document.getElementById('rpReason').value;
+
+    if (!month) { _alert('请选择月份'); return; }
+    if (!tgName) { _alert('请选择员工'); return; }
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) { _alert('请输入有效金额'); return; }
+
+    const body = { month, tgName, type, currency, amount: parseFloat(amount), reason };
+    const url = id ? '/api/finance/rewardpenalty/' + id : '/api/finance/rewardpenalty';
+    const method = id ? 'PUT' : 'POST';
+
+    fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) })
+        .then(r => r.json()).then(resp => {
+            if (!resp.success) { _alert(resp.message); return; }
+            _rpModal.hide();
+            const m = '{{ selected_month }}';
+            loadContent('/finance/rewardpenalty' + (m ? '?month=' + m : ''));
+        });
+};
+
+window.delRp = function(id) {
+    _confirm('确定要删除这条奖惩记录吗？', function() {
+        fetch('/api/finance/rewardpenalty/' + id, { method: 'DELETE' })
+            .then(r => r.json()).then(resp => {
+                if (!resp.success) { _alert(resp.message); return; }
+                const m = '{{ selected_month }}';
+                loadContent('/finance/rewardpenalty' + (m ? '?month=' + m : ''));
+            });
+    }, true);
+};
+</script>

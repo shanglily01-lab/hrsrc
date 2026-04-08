@@ -1,0 +1,66 @@
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0"><i class="bi bi-people me-2"></i>周例会 {% if pro %}<small class="text-muted fs-6">— {{ pro.pname }}</small>{% endif %}</h4>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" onclick="loadContent('/pro')">返回项目</button>
+            <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>新增例会</button>
+        </div>
+    </div>
+    <div class="card"><div class="card-body p-0"><div class="table-responsive">
+        <table class="table table-hover table-sm align-middle mb-0">
+            <thead class="table-light"><tr><th>ID</th><th>类型</th><th>日期</th><th>主持</th><th>内容</th><th>操作</th></tr></thead>
+            <tbody>
+                {% for r in reports %}
+                <tr>
+                    <td>{{ r.id }}</td>
+                    <td>{{ r.mtype or '' }}</td>
+                    <td>{{ r.mdate or '' }}</td>
+                    <td>{{ r.mzg or '' }}</td>
+                    <td style="max-width:400px;white-space:pre-wrap">{{ r.mdesc or '' }}</td>
+                    <td><button class="btn btn-sm btn-outline-danger" onclick="delReport({{ r.id }})">删除</button></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted py-3">暂无例会记录</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div></div></div>
+</div>
+
+<div class="modal fade" id="meetModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">新增例会记录</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label">会议类型</label>
+                    <select class="form-select form-select-sm" id="meetType">
+                        <option value="周例会">周例会</option>
+                        <option value="月例会">月例会</option>
+                        <option value="专项会议">专项会议</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="col-md-6"><label class="form-label">日期</label><input type="date" class="form-control form-control-sm" id="meetDate"></div>
+                <div class="col-md-6"><label class="form-label">主持人</label><input type="text" class="form-control form-control-sm" id="meetZg"></div>
+                <div class="col-12"><label class="form-label">会议内容 *</label><textarea class="form-control form-control-sm" id="meetDesc" rows="5"></textarea></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="submitMeet()">保存</button>
+        </div>
+    </div></div>
+</div>
+<script>
+const meetModal = new bootstrap.Modal(document.getElementById('meetModal'));
+window.openAdd = function() { document.getElementById('meetDesc').value=''; document.getElementById('meetDate').value=''; document.getElementById('meetZg').value=''; meetModal.show(); };
+window.submitMeet = function() {
+    const desc = document.getElementById('meetDesc').value;
+    if (!desc) { _alert('会议内容不能为空'); return; }
+    const body = { pid: {{ pid }}, mtype: document.getElementById('meetType').value, mdate: document.getElementById('meetDate').value, mdesc: desc, mzg: document.getElementById('meetZg').value };
+    fetch('/api/meetreport', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) })
+        .then(r=>r.json()).then(resp=>{ if(resp.success){meetModal.hide();loadContent('/meetreports?pid={{ pid }}');}else _alert(resp.message); });
+};
+window.delReport = function(id) { _confirm('确认删除？', function() { fetch('/api/meetreport/'+id,{method:'DELETE'}).then(r=>r.json()).then(resp=>{if(resp.success)loadContent('/meetreports?pid={{ pid }}');}); }, true); };
+</script>

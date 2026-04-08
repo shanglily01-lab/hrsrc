@@ -1,0 +1,91 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-list-task"></i>管理事项</h4>
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>新增事项</button>
+    </div>
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr><th style="width:40px">#</th><th>事项</th><th>描述</th><th style="width:100px">操作</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for d in items %}
+                        <tr>
+                            <td class="text-muted small">{{ loop.index }}</td>
+                            <td class="fw-500">{{ d.sx }}</td>
+                            <td class="text-muted small" style="max-width:400px">{{ d.ms }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary py-0 px-2 me-1" onclick="openEdit({{ d.id }}, {{ d.sx|tojson }}, {{ d.ms|tojson }})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="delItem({{ d.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox d-block mb-2 fs-3 opacity-25"></i>暂无事项
+                        </td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="dmModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title" id="dmTitle">新增事项</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="dmId">
+            <div class="mb-3">
+                <label class="form-label small text-muted">事项 *</label>
+                <input type="text" class="form-control" id="dmSx" placeholder="事项名称">
+            </div>
+            <div class="mb-2">
+                <label class="form-label small text-muted">描述</label>
+                <textarea class="form-control" id="dmMs" rows="4" placeholder="事项详细描述..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveItem()"><i class="bi bi-check-lg me-1"></i>保存</button>
+        </div>
+    </div></div>
+</div>
+<script>
+const dmModal = new bootstrap.Modal(document.getElementById('dmModal'));
+window.openAdd = function() {
+    document.getElementById('dmTitle').textContent='新增事项';
+    document.getElementById('dmId').value='';
+    document.getElementById('dmSx').value='';
+    document.getElementById('dmMs').value='';
+    dmModal.show();
+};
+window.openEdit = function(id, sx, ms) {
+    document.getElementById('dmTitle').textContent='编辑事项';
+    document.getElementById('dmId').value=id;
+    document.getElementById('dmSx').value=sx||'';
+    document.getElementById('dmMs').value=ms||'';
+    dmModal.show();
+};
+window.saveItem = function() {
+    const id = document.getElementById('dmId').value;
+    const body = { sx: document.getElementById('dmSx').value, ms: document.getElementById('dmMs').value };
+    if (!body.sx) { _alert('事项不能为空'); return; }
+    fetch(id ? '/api/demark/'+id : '/api/demark', { method: id?'PUT':'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) })
+        .then(r=>r.json()).then(resp=>{ if(resp.success){dmModal.hide();loadContent('/demark');}else _alert(resp.message); });
+};
+window.delItem = function(id) {
+    _confirm('确认删除？', function() {
+        fetch('/api/demark/'+id,{method:'DELETE'}).then(r=>r.json()).then(resp=>{ if(resp.success)loadContent('/demark'); });
+    }, true);
+};
+</script>

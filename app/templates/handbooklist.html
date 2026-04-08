@@ -1,0 +1,125 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-journal-text"></i>管理员工守则</h4>
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>新增条目</button>
+    </div>
+
+    {% if not grouped %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-journal-x d-block mb-2 fs-2 opacity-25"></i>暂无数据
+    </div>
+    {% else %}
+
+    {% for seg, group in grouped.items() %}
+    <div class="card mb-3">
+        <!-- 章节标题栏 -->
+        <div class="card-header d-flex align-items-center gap-3 py-2"
+             style="cursor:pointer" onclick="this.nextElementSibling.classList.toggle('d-none')">
+            <div class="d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+                 style="width:30px;height:30px;border-radius:50%;background:var(--primary-color);font-size:.85rem">
+                {{ seg }}
+            </div>
+            <span class="fw-500 small">第 {{ seg }} 章</span>
+            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill" style="font-size:.7rem">
+                {{ group | length }} 条
+            </span>
+            <button class="btn btn-outline-primary btn-sm py-0 px-2 ms-auto me-1" style="font-size:.75rem"
+                    onclick="event.stopPropagation();openAdd({{ seg }})">
+                <i class="bi bi-plus"></i> 添加
+            </button>
+            <i class="bi bi-chevron-down small text-muted"></i>
+        </div>
+
+        <div class="card-body p-0">
+            {% for b in group %}
+            <div class="d-flex align-items-start gap-3 px-4 py-3 {{ 'border-top' if not loop.first else '' }}"
+                 style="{{ 'background:#fafbff' if loop.index is odd else '' }}">
+                <!-- 编号 -->
+                <span class="badge rounded-pill text-primary flex-shrink-0 mt-1 px-2"
+                      style="background:rgba(75,108,183,.1);font-size:.7rem;min-width:2.2rem;line-height:1.5">
+                    {{ seg }}.{{ loop.index }}
+                </span>
+                <!-- 内容 -->
+                <div class="flex-grow-1 text-secondary small" style="line-height:1.8">{{ b.books }}</div>
+                <!-- 操作 -->
+                <div class="d-flex gap-1 flex-shrink-0">
+                    <button class="btn btn-sm btn-outline-primary py-0 px-2"
+                            onclick="openEdit({{ b.id }}, {{ b.segid }}, {{ b.books | tojson }})">
+                        <i class="bi bi-pencil" style="font-size:.75rem"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="delBook({{ b.id }})">
+                        <i class="bi bi-trash" style="font-size:.75rem"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>
+
+<div class="modal fade" id="bookModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title" id="bookModalTitle">新增条目</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="bookId">
+            <div class="mb-3">
+                <label class="form-label small text-muted">章节号 *</label>
+                <input type="number" class="form-control" id="bookSeg" placeholder="如 1、2、3" min="1">
+            </div>
+            <div class="mb-2">
+                <label class="form-label small text-muted">条款内容 *</label>
+                <textarea class="form-control" id="bookContent" rows="5" placeholder="输入条款内容..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveBook()">
+                <i class="bi bi-check-lg me-1"></i>保存
+            </button>
+        </div>
+    </div></div>
+</div>
+
+<script>
+const bookModal = new bootstrap.Modal(document.getElementById('bookModal'));
+window.openAdd = function(seg) {
+    document.getElementById('bookModalTitle').textContent = '新增条目';
+    document.getElementById('bookId').value = '';
+    document.getElementById('bookSeg').value = seg || '';
+    document.getElementById('bookContent').value = '';
+    bookModal.show();
+};
+window.openEdit = function(id, seg, content) {
+    document.getElementById('bookModalTitle').textContent = '编辑条目';
+    document.getElementById('bookId').value = id;
+    document.getElementById('bookSeg').value = seg;
+    document.getElementById('bookContent').value = content;
+    bookModal.show();
+};
+window.saveBook = function() {
+    const id = document.getElementById('bookId').value;
+    const seg = document.getElementById('bookSeg').value;
+    if (!seg) { _alert('章节号不能为空'); return; }
+    const content = document.getElementById('bookContent').value;
+    if (!content.trim()) { _alert('内容不能为空'); return; }
+    const body = { segid: parseInt(seg), books: content };
+    if (id) body.id = id;
+    const url = id ? '/api/updateHandBook' : '/api/insertHandBook';
+    fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) })
+        .then(r => r.json()).then(resp => {
+            if (resp.success) { bookModal.hide(); loadContent('/handbooklist'); }
+            else _alert(resp.message);
+        });
+};
+window.delBook = function(id) {
+    _confirm('确认删除该条目？', function() {
+        fetch('/api/deleteHandBook', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id}) })
+            .then(r => r.json()).then(resp => { if (resp.success) loadContent('/handbooklist'); });
+    }, true);
+};
+</script>

@@ -1,0 +1,121 @@
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0"><i class="bi bi-flag me-2"></i>运营需求
+            {% if pro %}<small class="text-muted fs-6">— {{ pro.pname }}</small>{% endif %}
+        </h4>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" onclick="loadContent('/pro')">返回项目</button>
+            <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>新增需求</button>
+        </div>
+    </div>
+
+    {% if not marks %}
+    <div class="text-center text-muted py-5">暂无运营需求</div>
+    {% else %}
+    {% set level_styles = {'P0': ('bg-danger','danger'), 'P1': ('bg-warning text-dark','warning'), 'P2': ('bg-info text-dark','info'), 'P3': ('bg-secondary','secondary')} %}
+    {% set levels = ['P0','P1','P2','P3'] %}
+    <div class="row g-3">
+        {% for level in levels %}
+        {% set level_marks = marks | selectattr('reqlevel','eq',level) | list %}
+        {% if level_marks %}
+        <div class="col-12">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge {{ level_styles[level][0] }} fs-6">{{ level }}</span>
+                <span class="text-muted small">{{ level_marks | length }} 条</span>
+                <hr class="flex-grow-1 my-0">
+            </div>
+            <div class="row g-2">
+                {% for m in level_marks %}
+                <div class="col-md-6 col-xl-4">
+                    <div class="card border-start border-4 border-{{ level_styles[level][1] }} h-100">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <strong class="small">{{ m.reqname or '' }}</strong>
+                                <div class="d-flex gap-1">
+                                    {% if m.reqver %}<span class="badge bg-light text-dark border small">{{ m.reqver }}</span>{% endif %}
+                                    {% if user and m.uid == user.id %}
+                                    <button class="btn btn-xs btn-outline-danger btn-sm py-0 px-1" onclick="delMark({{ m.id }})"><i class="bi bi-trash"></i></button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% if m.reqdesc %}
+                            <p class="mb-1 text-muted small" style="white-space:pre-wrap">{{ m.reqdesc }}</p>
+                            {% endif %}
+                            {% if m.reqmark %}
+                            <p class="mb-0 small text-secondary fst-italic" style="white-space:pre-wrap">备注: {{ m.reqmark }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+        {% set no_level = marks | rejectattr('reqlevel','in',levels) | list %}
+        {% if no_level %}
+        <div class="col-12">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-secondary">其他</span>
+                <hr class="flex-grow-1 my-0">
+            </div>
+            <div class="row g-2">
+                {% for m in no_level %}
+                <div class="col-md-6 col-xl-4">
+                    <div class="card h-100"><div class="card-body p-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <strong class="small">{{ m.reqname }}</strong>
+                            {% if user and m.uid == user.id %}
+                            <button class="btn btn-xs btn-outline-danger btn-sm py-0 px-1" onclick="delMark({{ m.id }})"><i class="bi bi-trash"></i></button>
+                            {% endif %}
+                        </div>
+                        <p class="mb-0 text-muted small" style="white-space:pre-wrap">{{ m.reqdesc or '' }}</p>
+                    </div></div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="markModal" tabindex="-1">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">新增运营需求</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <div class="row g-2">
+                <div class="col-md-6"><label class="form-label">需求名称 *</label><input type="text" class="form-control form-control-sm" id="markName"></div>
+                <div class="col-md-3">
+                    <label class="form-label">优先级</label>
+                    <select class="form-select form-select-sm" id="markLevel">
+                        <option value="P0">P0 - 紧急</option>
+                        <option value="P1" selected>P1 - 高</option>
+                        <option value="P2">P2 - 中</option>
+                        <option value="P3">P3 - 低</option>
+                    </select>
+                </div>
+                <div class="col-md-3"><label class="form-label">版本</label><input type="text" class="form-control form-control-sm" id="markVer" placeholder="如 v1.0" list="verList">
+                    <datalist id="verList">{% for v in versions %}<option value="{{ v.vers }}">{% endfor %}</datalist>
+                </div>
+                <div class="col-12"><label class="form-label">需求描述</label><textarea class="form-control form-control-sm" id="markDesc" rows="3"></textarea></div>
+                <div class="col-12"><label class="form-label">备注</label><textarea class="form-control form-control-sm" id="markNote" rows="2"></textarea></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveMark()">保存</button>
+        </div>
+    </div></div>
+</div>
+<script>
+const markModal = new bootstrap.Modal(document.getElementById('markModal'));
+window.openAdd = function(){document.getElementById('markName').value='';document.getElementById('markDesc').value='';document.getElementById('markNote').value='';document.getElementById('markVer').value='';markModal.show();};
+window.saveMark = function(){
+    const name=document.getElementById('markName').value.trim();
+    if(!name){_alert('需求名称不能为空');return;}
+    fetch('/api/reqmark',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pid:{{ pid }},reqname:name,reqdesc:document.getElementById('markDesc').value,reqlevel:document.getElementById('markLevel').value,reqver:document.getElementById('markVer').value,reqmark:document.getElementById('markNote').value})})
+        .then(r=>r.json()).then(resp=>{if(resp.success){markModal.hide();loadContent('/reqmark?pid={{ pid }}');}else _alert(resp.message);});
+};
+window.delMark=function(id){_confirm('确认删除？', function(){fetch('/api/reqmark/'+id,{method:'DELETE'}).then(r=>r.json()).then(resp=>{if(resp.success)loadContent('/reqmark?pid={{ pid }}');});}, true);};
+</script>

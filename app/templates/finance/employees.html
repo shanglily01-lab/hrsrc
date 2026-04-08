@@ -1,0 +1,287 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-people"></i>员工档案</h4>
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>新增员工</button>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        <input type="text" class="form-control form-control-sm" id="empKeyword" placeholder="搜索 TG名 / 岗位" value="{{ keyword }}" style="max-width:240px"
+               onkeydown="if(event.key==='Enter') loadContent('/finance/employees?keyword='+encodeURIComponent(this.value))">
+        <button class="btn btn-outline-secondary btn-sm px-3"
+                onclick="loadContent('/finance/employees?keyword='+encodeURIComponent(document.getElementById('empKeyword').value))">搜索</button>
+        {% if keyword %}
+        <button class="btn btn-outline-secondary btn-sm" onclick="loadContent('/finance/employees')">重置</button>
+        {% endif %}
+    </div>
+
+    {% if not employees %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-people d-block mb-2 fs-2 opacity-25"></i>暂无员工档案
+    </div>
+    {% else %}
+    <div class="row g-3">
+        {% for e in employees %}
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="card h-100" style="border-top:3px solid {{ 'var(--primary-color)' if e.is_formal and '转正' in e.is_formal else '#e5e7eb' }} !important">
+                <div class="card-body">
+                    <!-- 头部：头像 + 姓名 + 状态 -->
+                    <div class="d-flex align-items-start justify-content-between mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+                                 style="width:40px;height:40px;font-size:1rem;background:{{ 'var(--primary-color)' if e.is_formal and '转正' in e.is_formal else '#9ca3af' }}">
+                                {{ e.tg_name[0] | upper if e.tg_name else '?' }}
+                            </div>
+                            <div>
+                                <div class="fw-500">{{ e.tg_name }}</div>
+                                <div class="text-muted" style="font-size:.75rem">{{ e.position or '未设置岗位' }}</div>
+                            </div>
+                        </div>
+                        <span class="badge rounded-pill {{ 'bg-success' if e.is_formal and '转正' in e.is_formal else 'bg-secondary bg-opacity-10 text-secondary' }}" style="font-size:.7rem">
+                            {{ e.is_formal or '试用' }}
+                        </span>
+                    </div>
+
+                    <!-- 团队 + 入职 + 结算方式 -->
+                    <div class="d-flex flex-wrap gap-1 mb-3">
+                        {% if e.team %}
+                        <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary" style="font-size:.7rem">
+                            <i class="bi bi-people me-1"></i>{{ e.team }}
+                        </span>
+                        {% endif %}
+                        {% if e.currency %}
+                        <span class="badge rounded-pill {{ 'bg-primary text-white' if e.currency == 'U' else 'bg-success text-white' }}" style="font-size:.7rem">
+                            <i class="bi bi-coin me-1"></i>{{ e.currency }}
+                        </span>
+                        {% endif %}
+                        {% if e.entry_date %}
+                        <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary" style="font-size:.7rem">
+                            <i class="bi bi-calendar3 me-1"></i>{{ e.entry_date }}
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- 薪资信息（掩盖） -->
+                    <div class="rounded-3 p-2 mb-2" style="background:#f8f9fa">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span class="text-muted" style="font-size:.65rem">薪资</span>
+                            <button class="btn btn-link btn-sm p-0 text-secondary emp-eye-btn"
+                                    data-empid="{{ e.id }}" onclick="toggleEmpSensitive({{ e.id }})" title="显示/隐藏">
+                                <i class="bi bi-eye-slash" id="empEye_{{ e.id }}"></i>
+                            </button>
+                        </div>
+                        <div id="empSalary_{{ e.id }}" class="row g-0 text-center" style="display:none!important">
+                            <div class="col-4 border-end">
+                                <div class="text-muted" style="font-size:.6rem">试用</div>
+                                <div class="fw-500 small">{{ e.trial_salary or '—' }}</div>
+                            </div>
+                            <div class="col-4 border-end">
+                                <div class="text-muted" style="font-size:.6rem">转正</div>
+                                <div class="fw-500 small">{{ e.formal_salary or '—' }}</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-muted" style="font-size:.6rem">当前</div>
+                                <div class="fw-bold small text-primary">{{ e.adjusted_salary or e.formal_salary or '—' }}</div>
+                            </div>
+                        </div>
+                        <div id="empSalaryMask_{{ e.id }}" class="text-center text-muted small">••••••</div>
+                    </div>
+
+
+                    <!-- 收款地址（来自 Profile） -->
+                    {% set addrs = addr_map.get((e.tg_name or '').lower(), {}) %}
+                    {% if addrs.saddr or addrs.vaddr %}
+                    <div class="rounded-3 p-2 mb-2" style="background:#f8f9fa">
+                        <div id="empAddr_{{ e.id }}" style="display:none!important">
+                            {% if addrs.saddr %}
+                            <div class="d-flex align-items-center gap-1 mb-1">
+                                <span class="badge bg-warning text-dark flex-shrink-0">TRC20</span>
+                                <span class="font-monospace text-truncate text-muted" style="font-size:1.05rem" title="{{ addrs.saddr }}">{{ addrs.saddr }}</span>
+                            </div>
+                            {% endif %}
+                            {% if addrs.vaddr %}
+                            <div class="d-flex align-items-center gap-1">
+                                <span class="badge bg-info text-white flex-shrink-0">ERC20</span>
+                                <span class="font-monospace text-truncate text-muted" style="font-size:1.05rem" title="{{ addrs.vaddr }}">{{ addrs.vaddr }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div id="empAddrMask_{{ e.id }}" class="text-center text-muted small">••••••</div>
+                    </div>
+                    {% endif %}
+
+                    <!-- 备注 -->
+                    {% if e.remarks %}
+                    <p class="text-muted mb-3" style="font-size:.75rem;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ e.remarks }}</p>
+                    {% endif %}
+
+                    <!-- 操作 -->
+                    {% if is_admin %}
+                    <div class="d-flex gap-2 mt-auto">
+                        <button class="btn btn-sm btn-outline-primary flex-fill" onclick="openEdit({{ e.id }})">
+                            <i class="bi bi-pencil me-1"></i>编辑
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="delEmployee({{ e.id }})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="empModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title" id="empModalTitle">新增员工</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="empId">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">TG名 *</label>
+                        <input type="text" class="form-control" id="empTgName">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">岗位</label>
+                        <input type="text" class="form-control" id="empPosition">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">入职日期</label>
+                        <input type="text" class="form-control" id="empEntryDate" placeholder="如 2025-01-01">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">试用期薪资</label>
+                        <input type="text" class="form-control" id="empTrialSalary">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">转正薪资</label>
+                        <input type="text" class="form-control" id="empFormalSalary">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">调整后薪资</label>
+                        <input type="text" class="form-control" id="empAdjustedSalary">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">调薪日期</label>
+                        <input type="text" class="form-control" id="empSalaryAdjustDate">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">是否转正</label>
+                        <input type="text" class="form-control" id="empIsFormal" placeholder="如 转正">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">所属团队</label>
+                        <select class="form-select" id="empTeam">
+                            <option value="">— 未分配 —</option>
+                            {% for t in teams %}
+                            <option value="{{ t.name }}">{{ t.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">结算方式</label>
+                        <select class="form-select" id="empCurrency">
+                            <option value="">— 未设置 —</option>
+                            <option value="U">U (USDT)</option>
+                            <option value="RMB">RMB</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small text-muted">备注</label>
+                        <textarea class="form-control" id="empRemarks" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="saveEmployee()"><i class="bi bi-check-lg me-1"></i>保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+window._empVisible = {};
+window.toggleEmpSensitive = function(id) {
+    _empVisible[id] = !_empVisible[id];
+    const show = _empVisible[id];
+    const salary     = document.getElementById('empSalary_'     + id);
+    const salaryMask = document.getElementById('empSalaryMask_' + id);
+    const addr       = document.getElementById('empAddr_'       + id);
+    const addrMask   = document.getElementById('empAddrMask_'   + id);
+    const icon       = document.getElementById('empEye_'        + id);
+    if (salary)     salary.style.cssText     = show ? '' : 'display:none!important';
+    if (salaryMask) salaryMask.style.display = show ? 'none' : '';
+    if (addr)       addr.style.cssText       = show ? '' : 'display:none!important';
+    if (addrMask)   addrMask.style.display   = show ? 'none' : '';
+    if (icon)       icon.className           = show ? 'bi bi-eye' : 'bi bi-eye-slash';
+};
+const empModal = new bootstrap.Modal(document.getElementById('empModal'));
+window.openAdd = function() {
+    document.getElementById('empModalTitle').textContent = '新增员工';
+    document.getElementById('empId').value = '';
+    ['empTgName','empPosition','empEntryDate','empTrialSalary','empFormalSalary','empAdjustedSalary','empSalaryAdjustDate','empIsFormal','empRemarks'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('empTeam').value = '';
+    document.getElementById('empCurrency').value = '';
+    empModal.show();
+};
+window.openEdit = function(id) {
+    fetch('/api/finance/employees/' + id).then(r => r.json()).then(resp => {
+        const e = resp.data;
+        document.getElementById('empModalTitle').textContent = '编辑员工';
+        document.getElementById('empId').value = e.id || '';
+        document.getElementById('empTgName').value = e.tgName || '';
+        document.getElementById('empPosition').value = e.position || '';
+        document.getElementById('empEntryDate').value = e.entryDate || '';
+        document.getElementById('empTrialSalary').value = e.trialSalary || '';
+        document.getElementById('empFormalSalary').value = e.formalSalary || '';
+        document.getElementById('empAdjustedSalary').value = e.adjustedSalary || '';
+        document.getElementById('empSalaryAdjustDate').value = e.salaryAdjustDate || '';
+        document.getElementById('empIsFormal').value = e.isFormal || '';
+        document.getElementById('empTeam').value = e.team || '';
+        document.getElementById('empCurrency').value = e.currency || '';
+
+        document.getElementById('empRemarks').value = e.remarks || '';
+        empModal.show();
+    });
+};
+window.saveEmployee = function() {
+    const id = document.getElementById('empId').value;
+    const body = {
+        tgName: document.getElementById('empTgName').value,
+        position: document.getElementById('empPosition').value,
+        entryDate: document.getElementById('empEntryDate').value,
+        trialSalary: document.getElementById('empTrialSalary').value,
+        formalSalary: document.getElementById('empFormalSalary').value,
+        adjustedSalary: document.getElementById('empAdjustedSalary').value,
+        salaryAdjustDate: document.getElementById('empSalaryAdjustDate').value,
+        isFormal: document.getElementById('empIsFormal').value,
+        team: document.getElementById('empTeam').value,
+        currency: document.getElementById('empCurrency').value,
+
+        remarks: document.getElementById('empRemarks').value
+    };
+    if (!body.tgName) { _alert('TG名不能为空'); return; }
+    fetch(id ? '/api/finance/employees/' + id : '/api/finance/employees', {
+        method: id ? 'PUT' : 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+    }).then(r => r.json()).then(resp => {
+        if (resp.success) { empModal.hide(); loadContent('/finance/employees'); }
+        else _alert('保存失败: ' + resp.message);
+    });
+};
+window.delEmployee = function(id) {
+    _confirm('确认删除该员工档案？', function() {
+        fetch('/api/finance/employees/' + id, {method:'DELETE'})
+            .then(r => r.json()).then(resp => { if (resp.success) loadContent('/finance/employees'); else _alert(resp.message); });
+    }, true);
+};
+</script>

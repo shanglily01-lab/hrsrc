@@ -1,0 +1,96 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-people"></i>用户管理</h4>
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>新增用户</button>
+    </div>
+
+    {% if not users %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-people d-block mb-2 fs-2 opacity-25"></i>暂无用户
+    </div>
+    {% else %}
+    <div class="row g-3">
+        {% for u in users %}
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="card h-100" style="border-top:3px solid {{ 'var(--primary-dark)' if u.uname == 'admin' else 'var(--primary-color)' }} !important">
+                <div class="card-body">
+                    <div class="d-flex align-items-start justify-content-between mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+                                 style="width:42px;height:42px;font-size:1.1rem;background:{{ 'var(--primary-dark)' if u.uname == 'admin' else 'var(--primary-color)' }}">
+                                {{ u.uname[0] | upper }}
+                            </div>
+                            <div>
+                                <div class="fw-500">{{ u.uname }}</div>
+                                {% if u.uname == 'admin' %}
+                                <span style="font-size:.7rem" class="text-warning"><i class="bi bi-star-fill me-1"></i>超级管理员</span>
+                                {% else %}
+                                <span style="font-size:.7rem" class="text-muted">普通用户</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if u.uname != 'admin' %}
+                        <button class="btn-close" style="font-size:.65rem" onclick="delUser({{ u.id }}, '{{ u.uname }}')" title="删除用户"></button>
+                        {% endif %}
+                    </div>
+
+                    <div class="rounded-3 p-2" style="background:#f8f9fa;font-size:.75rem">
+                        <div class="d-flex align-items-center gap-2 mb-1 text-muted">
+                            <i class="bi bi-clock"></i>
+                            <span>{{ u.lodate or '从未登录' }}</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 text-muted">
+                            <i class="bi bi-geo"></i>
+                            <span>{{ u.ip or '—' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title">新增用户</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <div class="mb-3">
+                <label class="form-label small text-muted">用户名 *</label>
+                <input type="text" class="form-control" id="newUname" placeholder="登录用户名">
+            </div>
+            <div class="mb-2">
+                <label class="form-label small text-muted">初始密码</label>
+                <input type="password" class="form-control" id="newUpass" placeholder="默认 123456">
+            </div>
+        </div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveUser()"><i class="bi bi-check-lg me-1"></i>保存</button>
+        </div>
+    </div></div>
+</div>
+<script>
+const userModal = new bootstrap.Modal(document.getElementById('userModal'));
+window.openAdd = function() {
+    document.getElementById('newUname').value = '';
+    document.getElementById('newUpass').value = '';
+    userModal.show();
+};
+window.saveUser = function() {
+    const uname = document.getElementById('newUname').value;
+    if (!uname) { _alert('用户名不能为空'); return; }
+    fetch('/api/insertUser', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({uname: uname, upass: document.getElementById('newUpass').value || '123456'}) })
+        .then(r => r.json()).then(resp => { if (resp.success) { userModal.hide(); loadContent('/users'); } else _alert(resp.message); });
+};
+window.delUser = function(id, name) {
+    _confirm('确认删除用户 ' + name + ' ？', function() {
+        fetch('/api/deleteUser', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: id})})
+            .then(r => r.json()).then(resp => { if (resp.success) loadContent('/users'); });
+    }, true);
+};
+</script>

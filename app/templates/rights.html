@@ -1,0 +1,154 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-key"></i>权限管理</h4>
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>新增权限</button>
+    </div>
+
+    {% if not rights %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-key d-block mb-2 fs-2 opacity-25"></i>暂无权限
+    </div>
+    {% else %}
+    {% set top_rights = rights | selectattr('pid', 'none') | list %}
+    {% set sub_rights = rights | rejectattr('pid', 'none') | list %}
+
+    {% if top_rights %}
+    <div class="mb-2">
+        <span class="text-muted small"><i class="bi bi-key me-1"></i>顶级权限</span>
+    </div>
+    <div class="row g-3 mb-4">
+        {% for r in top_rights %}
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="card h-100" style="border-top:3px solid var(--primary-color) !important">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0"
+                             style="width:38px;height:38px;background:var(--primary-color)">
+                            <i class="bi bi-key-fill" style="font-size:.85rem"></i>
+                        </div>
+                        <div class="fw-500">{{ r.rname }}</div>
+                    </div>
+                    {% set children = rights | selectattr('pid', 'eq', r.id) | list %}
+                    {% if children %}
+                    <div class="d-flex flex-wrap gap-1 mb-3">
+                        {% for c in children %}
+                        <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary" style="font-size:.7rem">{{ c.rname }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary flex-fill" onclick="openEdit({{ r.id }}, {{ r.rname | tojson }}, {{ r.pid or 0 }})">
+                            <i class="bi bi-pencil me-1"></i>编辑
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="delRight({{ r.id }})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if sub_rights %}
+    <div class="mb-2">
+        <span class="text-muted small"><i class="bi bi-arrow-return-right me-1"></i>子级权限</span>
+    </div>
+    <div class="row g-3">
+        {% for r in sub_rights %}
+        {% set parent = rights | selectattr('id', 'eq', r.pid) | first | default(None) %}
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="card h-100" style="border-top:3px solid #e5e7eb !important">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                             style="width:38px;height:38px;background:#f3f4f6;color:#6b7280">
+                            <i class="bi bi-key" style="font-size:.85rem"></i>
+                        </div>
+                        <div>
+                            <div class="fw-500 small">{{ r.rname }}</div>
+                            {% if parent %}
+                            <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary" style="font-size:.65rem">
+                                <i class="bi bi-arrow-up me-1"></i>{{ parent.rname }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary flex-fill" onclick="openEdit({{ r.id }}, {{ r.rname | tojson }}, {{ r.pid or 0 }})">
+                            <i class="bi bi-pencil me-1"></i>编辑
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="delRight({{ r.id }})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+
+<div class="modal fade" id="rightModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title" id="rightModalTitle">新增权限</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="rightId">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label small text-muted">权限名称 *</label>
+                    <input type="text" class="form-control" id="rightName" placeholder="如 查看报表">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted">父权限</label>
+                    <select class="form-select" id="rightPid">
+                        <option value="0">— 顶级权限 —</option>
+                        {% for r in rights %}
+                        <option value="{{ r.id }}">{{ r.rname }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveRight()"><i class="bi bi-check-lg me-1"></i>保存</button>
+        </div>
+    </div></div>
+</div>
+<script>
+const rightModal = new bootstrap.Modal(document.getElementById('rightModal'));
+window.openAdd = function() {
+    document.getElementById('rightModalTitle').textContent = '新增权限';
+    document.getElementById('rightId').value = '';
+    document.getElementById('rightName').value = '';
+    document.getElementById('rightPid').value = '0';
+    rightModal.show();
+};
+window.openEdit = function(id, name, pid) {
+    document.getElementById('rightModalTitle').textContent = '编辑权限';
+    document.getElementById('rightId').value = id;
+    document.getElementById('rightName').value = name;
+    document.getElementById('rightPid').value = pid || '0';
+    rightModal.show();
+};
+window.saveRight = function() {
+    const id = document.getElementById('rightId').value;
+    const name = document.getElementById('rightName').value;
+    if (!name) { _alert('权限名称不能为空'); return; }
+    const body = { rname: name, pid: parseInt(document.getElementById('rightPid').value) || 0 };
+    fetch(id ? '/api/right/' + id : '/api/right', { method: id ? 'PUT' : 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) })
+        .then(r => r.json()).then(resp => { if (resp.success) { rightModal.hide(); loadContent('/right'); } else _alert(resp.message); });
+};
+window.delRight = function(id) {
+    _confirm('确认删除？', function() {
+        fetch('/api/right/' + id, {method:'DELETE'}).then(r => r.json()).then(resp => { if (resp.success) loadContent('/right'); });
+    }, true);
+};
+</script>

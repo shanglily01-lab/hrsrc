@@ -1,0 +1,91 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-shield-check"></i>角色权限</h4>
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>分配权限</button>
+    </div>
+
+    {% if not roles %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-shield-check d-block mb-2 fs-2 opacity-25"></i>暂无数据
+    </div>
+    {% else %}
+    <div class="row g-3">
+        {% for role in roles %}
+        {% set r_rows = rows | selectattr('rid','eq',role.id) | list %}
+        <div class="col-xl-4 col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <!-- 角色信息 -->
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0"
+                             style="width:38px;height:38px;background:var(--primary-color)">
+                            <i class="bi bi-shield-fill"></i>
+                        </div>
+                        <div>
+                            <div class="fw-500 small">{{ role.rname }}</div>
+                            <div style="font-size:.7rem" class="text-muted">{{ r_rows | length }} 项权限</div>
+                        </div>
+                    </div>
+
+                    <!-- 权限列表 -->
+                    <div class="d-flex flex-wrap gap-1">
+                        {% for r in r_rows %}
+                        {% set gobj = rights | selectattr('id','eq',r.rgid) | first | default(None) %}
+                        <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary d-inline-flex align-items-center gap-1" style="font-size:.72rem">
+                            <i class="bi bi-key" style="font-size:.6rem"></i>
+                            {{ gobj.rname if gobj else r.rgid }}
+                            <span style="cursor:pointer;opacity:.6;margin-left:2px" onclick="delRow({{ r.id }})" title="移除">&times;</span>
+                        </span>
+                        {% else %}
+                        <span class="text-muted small">未分配权限</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="rrModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title">分配权限</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <div class="mb-3">
+                <label class="form-label small text-muted">角色 *</label>
+                <select class="form-select" id="rrRid">
+                    {% for r in roles %}<option value="{{ r.id }}">{{ r.rname }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="mb-2">
+                <label class="form-label small text-muted">权限 *</label>
+                <select class="form-select" id="rrRgid">
+                    {% for r in rights %}<option value="{{ r.id }}">{{ r.rname }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveRow()"><i class="bi bi-check-lg me-1"></i>保存</button>
+        </div>
+    </div></div>
+</div>
+<script>
+const rrModal = new bootstrap.Modal(document.getElementById('rrModal'));
+window.openAdd = function() { rrModal.show(); };
+window.saveRow = function() {
+    const rid = parseInt(document.getElementById('rrRid').value);
+    const rgid = parseInt(document.getElementById('rrRgid').value);
+    fetch('/api/rolerights', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({rid: rid, rgid: rgid}) })
+        .then(r => r.json()).then(resp => { if (resp.success) { rrModal.hide(); loadContent('/rolerights'); } else _alert(resp.message); });
+};
+window.delRow = function(id) {
+    _confirm('确认移除该权限？', function() {
+        fetch('/api/rolerights/' + id, {method:'DELETE'}).then(r => r.json()).then(resp => { if (resp.success) loadContent('/rolerights'); });
+    }, true);
+};
+</script>

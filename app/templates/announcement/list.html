@@ -1,0 +1,132 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-megaphone"></i>公告</h4>
+        {% if is_admin %}
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>发布公告</button>
+        {% endif %}
+    </div>
+
+    {% if not anns %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-megaphone d-block mb-2 fs-2 opacity-25"></i>
+        暂无公告
+    </div>
+    {% endif %}
+
+    {% for a in anns %}
+    {% if loop.first %}
+    <div class="card mb-3" style="border-left:4px solid var(--primary-color) !important;">
+        <div class="card-body">
+            <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white bg-primary" style="width:36px;height:36px;flex-shrink:0">
+                        <i class="bi bi-megaphone-fill fs-6"></i>
+                    </div>
+                    <div>
+                        <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary me-1 small">置顶</span>
+                        <strong class="text-dark">{{ a.title }}</strong>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                    <span class="badge rounded-pill {{ 'bg-success' if a.status == 'PUBLISHED' else ('bg-secondary' if a.status == 'ARCHIVED' else 'bg-warning text-dark') }}">
+                        {{ '已发布' if a.status == 'PUBLISHED' else ('已归档' if a.status == 'ARCHIVED' else '草稿') }}
+                    </span>
+                    <span class="text-muted small">{{ a.publisher_name }} · {{ a.created_at }}</span>
+                    {% if is_admin %}
+                    <button class="btn btn-sm btn-outline-primary py-0 px-1" onclick="openEdit({{ a.id }})"><i class="bi bi-pencil"></i></button>
+                    {% if a.status != 'PUBLISHED' %}<button class="btn btn-sm btn-outline-success py-0 px-1" onclick="publishAnn({{ a.id }})"><i class="bi bi-send"></i></button>{% endif %}
+                    {% if a.status == 'PUBLISHED' %}<button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="archiveAnn({{ a.id }})"><i class="bi bi-archive"></i></button>{% endif %}
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="delAnn({{ a.id }})"><i class="bi bi-trash"></i></button>
+                    {% endif %}
+                </div>
+            </div>
+            <p class="mb-0 text-secondary" style="white-space:pre-wrap;line-height:1.7">{{ a.content }}</p>
+        </div>
+    </div>
+    {% else %}
+    <div class="card mb-2">
+        <div class="card-body py-3">
+            <div class="d-flex align-items-start justify-content-between gap-2">
+                <div class="d-flex align-items-start gap-2 flex-grow-1">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0 mt-1" style="width:28px;height:28px;background:{{ '#3a5ca6' if loop.index % 2 == 0 else '#4b7c6f' }}">
+                        <i class="bi bi-bell-fill" style="font-size:.65rem"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-600 text-dark small mb-1">{{ a.title }}</div>
+                        <p class="text-secondary mb-0 small" style="white-space:pre-wrap;line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ a.content }}</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-1 flex-shrink-0 ms-2">
+                    <span class="text-muted" style="font-size:.75rem">{{ a.created_at }}</span>
+                    <span class="badge rounded-pill {{ 'bg-success' if a.status == 'PUBLISHED' else ('bg-secondary' if a.status == 'ARCHIVED' else 'bg-warning text-dark') }}" style="font-size:.7rem">
+                        {{ '已发布' if a.status == 'PUBLISHED' else ('已归档' if a.status == 'ARCHIVED' else '草稿') }}
+                    </span>
+                    {% if is_admin %}
+                    <button class="btn btn-sm btn-outline-primary py-0 px-1" onclick="openEdit({{ a.id }})"><i class="bi bi-pencil" style="font-size:.7rem"></i></button>
+                    {% if a.status != 'PUBLISHED' %}<button class="btn btn-sm btn-outline-success py-0 px-1" onclick="publishAnn({{ a.id }})"><i class="bi bi-send" style="font-size:.7rem"></i></button>{% endif %}
+                    {% if a.status == 'PUBLISHED' %}<button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="archiveAnn({{ a.id }})"><i class="bi bi-archive" style="font-size:.7rem"></i></button>{% endif %}
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="delAnn({{ a.id }})"><i class="bi bi-trash" style="font-size:.7rem"></i></button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+
+{% if is_admin %}
+<div class="modal fade" id="annModal" tabindex="-1">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title" id="annTitle">新增公告</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="annId">
+            <div class="mb-3">
+                <label class="form-label small text-muted">标题 *</label>
+                <input type="text" class="form-control" id="annTitleInput" placeholder="公告标题">
+            </div>
+            <div class="mb-2">
+                <label class="form-label small text-muted">内容</label>
+                <textarea class="form-control" id="annContent" rows="7" placeholder="公告正文..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveAnn()"><i class="bi bi-check-lg me-1"></i>保存</button>
+        </div>
+    </div></div>
+</div>
+<script>
+const annModal = new bootstrap.Modal(document.getElementById('annModal'));
+window.openAdd = function() {
+    document.getElementById('annTitle').textContent='新增公告';
+    document.getElementById('annId').value='';
+    document.getElementById('annTitleInput').value='';
+    document.getElementById('annContent').value='';
+    annModal.show();
+};
+window.openEdit = function(id) {
+    fetch('/api/announcements/'+id).then(r=>r.json()).then(resp=>{
+        const a=resp.data;
+        document.getElementById('annTitle').textContent='编辑公告';
+        document.getElementById('annId').value=a.id;
+        document.getElementById('annTitleInput').value=a.title||'';
+        document.getElementById('annContent').value=a.content||'';
+        annModal.show();
+    });
+};
+window.saveAnn = function() {
+    const id=document.getElementById('annId').value;
+    const body={title:document.getElementById('annTitleInput').value, content:document.getElementById('annContent').value};
+    if(!body.title){_alert('标题不能为空');return;}
+    fetch(id?'/api/announcements/'+id:'/api/announcements/create',{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+        .then(r=>r.json()).then(resp=>{if(resp.success){annModal.hide();loadContent('/announcement/list');}else _alert(resp.message);});
+};
+window.publishAnn = function(id) { _confirm('确认发布？', function() { fetch('/api/announcements/'+id+'/publish',{method:'PUT'}).then(r=>r.json()).then(resp=>{if(resp.success)loadContent('/announcement/list');}); }); };
+window.archiveAnn = function(id) { _confirm('确认归档？', function() { fetch('/api/announcements/'+id+'/archive',{method:'PUT'}).then(r=>r.json()).then(resp=>{if(resp.success)loadContent('/announcement/list');}); }); };
+window.delAnn = function(id) { _confirm('确认删除？', function() { fetch('/api/announcements/'+id,{method:'DELETE'}).then(r=>r.json()).then(resp=>{if(resp.success)loadContent('/announcement/list');}); }, true); };
+</script>
+{% endif %}

@@ -1,0 +1,111 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-person-badge"></i>招聘账号</h4>
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>新增账号</button>
+    </div>
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr><th>招聘平台账号</th><th>招聘平台密码</th><th>邮箱</th><th>邮箱密码</th><th>备注</th><th style="width:80px">操作</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for z in items %}
+                        <tr>
+                            <td class="font-monospace small">{{ z.zh_name }}</td>
+                            <td class="font-monospace small text-muted">{{ z.zh_pwd }}</td>
+                            <td class="small">{{ z.yx_name }}</td>
+                            <td class="font-monospace small text-muted">{{ z.yx_pwd }}</td>
+                            <td class="small text-muted" style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ z.mark }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary py-0 px-2 me-1" onclick="openEdit({{ z.id }})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="delItem({{ z.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="text-center text-muted py-5">
+                            <i class="bi bi-person-x d-block mb-2 fs-3 opacity-25"></i>暂无账号数据
+                        </td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="zpModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title" id="zpTitle">新增账号</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="zpId">
+            <div class="row g-3">
+                <div class="col-6">
+                    <label class="form-label small text-muted">招聘平台账号</label>
+                    <input type="text" class="form-control" id="zpZhName" placeholder="账号">
+                </div>
+                <div class="col-6">
+                    <label class="form-label small text-muted">招聘平台密码</label>
+                    <input type="text" class="form-control" id="zpZhPwd" placeholder="密码">
+                </div>
+                <div class="col-6">
+                    <label class="form-label small text-muted">邮箱</label>
+                    <input type="text" class="form-control" id="zpYxName" placeholder="邮箱地址">
+                </div>
+                <div class="col-6">
+                    <label class="form-label small text-muted">邮箱密码</label>
+                    <input type="text" class="form-control" id="zpYxPwd" placeholder="邮箱密码">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted">备注</label>
+                    <textarea class="form-control" id="zpMark" rows="2" placeholder="备注信息..."></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveItem()"><i class="bi bi-check-lg me-1"></i>保存</button>
+        </div>
+    </div></div>
+</div>
+<script>
+const zpModal = new bootstrap.Modal(document.getElementById('zpModal'));
+window.openAdd = function() {
+    document.getElementById('zpTitle').textContent = '新增账号';
+    document.getElementById('zpId').value = '';
+    ['zpZhName','zpZhPwd','zpYxName','zpYxPwd','zpMark'].forEach(id => document.getElementById(id).value = '');
+    zpModal.show();
+};
+window.openEdit = function(id) {
+    fetch('/api/zpacc/' + id).then(r => r.json()).then(resp => {
+        const z = resp.data;
+        document.getElementById('zpTitle').textContent = '编辑账号';
+        document.getElementById('zpId').value = z.id || '';
+        document.getElementById('zpZhName').value = z.zhName || '';
+        document.getElementById('zpZhPwd').value = z.zhPwd || '';
+        document.getElementById('zpYxName').value = z.yxName || '';
+        document.getElementById('zpYxPwd').value = z.yxPwd || '';
+        document.getElementById('zpMark').value = z.mark || '';
+        zpModal.show();
+    });
+};
+window.saveItem = function() {
+    const id = document.getElementById('zpId').value;
+    const body = { zhName: document.getElementById('zpZhName').value, zhPwd: document.getElementById('zpZhPwd').value, yxName: document.getElementById('zpYxName').value, yxPwd: document.getElementById('zpYxPwd').value, mark: document.getElementById('zpMark').value };
+    fetch(id ? '/api/zpacc/' + id : '/api/zpacc', { method: id ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
+        .then(r => r.json()).then(resp => { if (resp.success) { zpModal.hide(); loadContent('/zpacc'); } else _alert(resp.message); });
+};
+window.delItem = function(id) {
+    _confirm('确认删除？', function() {
+        fetch('/api/zpacc/' + id, {method:'DELETE'}).then(r => r.json()).then(resp => { if (resp.success) loadContent('/zpacc'); });
+    }, true);
+};
+</script>

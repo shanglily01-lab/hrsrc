@@ -9,7 +9,23 @@
       "Bash(xargs -I {} sh -c 'echo \"\"{}:\"\" && grep -c \"\"get.*Modal\\(\\)\"\" {} 2>/dev/null || echo \"\"0\"\"')",
       "Bash(find:*)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(unzip -p \"d:\\\\\\\\ks-hrsrc\\\\\\\\9月payment.xlsx\" xl/workbook.xml)",
+      "Bash(unzip -p \"d:\\\\\\\\ks-hrsrc\\\\\\\\9月payment.xlsx\" xl/worksheets/sheet1.xml)",
+      "Bash(unzip -p \"d:\\\\\\\\ks-hrsrc\\\\\\\\9月payment.xlsx\" xl/sharedStrings.xml)",
+      "Bash(unzip -p \"d:\\\\\\\\ks-hrsrc\\\\\\\\9月payment.xlsx\" xl/worksheets/sheet2.xml)",
+      "Bash(JAVA_HOME=\"/c/Program Files/Java/jdk1.8.0_151\" /c/Users/Win10/Downloads/apache-maven-3.9.12/bin/mvn spring-boot:run -f /d/ks-hrsrc/pom.xml)",
+      "Read(//c/Users/Win10/.m2/repository/org/apache/poi/**)",
+      "Bash(JAVA_HOME=\"/c/Program Files/Java/jdk1.8.0_151\" /c/Users/Win10/Downloads/apache-maven-3.9.12/bin/mvn compile -f /d/ks-hrsrc/pom.xml)",
+      "Bash(set \"JAVA_HOME=C:\\\\Program Files\\\\Java\\\\jdk1.8.0_151\")",
+      "Bash(\"C:\\\\Users\\\\Win10\\\\Downloads\\\\apache-maven-3.9.12\\\\bin\\\\mvn\" spring-boot:run -f D:\\\\ks-hrsrc\\\\pom.xml)",
+      "Bash(echo \"Started PID: $!\")",
+      "Bash(%%CP%%\\\\\" AlterFinEmployee\")"
     ]
   }
 }

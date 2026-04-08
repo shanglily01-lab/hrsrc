@@ -1,0 +1,89 @@
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0"><i class="bi bi-journal-richtext me-2"></i>周报
+            {% if pro %}<small class="text-muted fs-6">— {{ pro.pname }}</small>{% endif %}
+        </h4>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" onclick="loadContent('/pro')">返回项目</button>
+            <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>提交周报</button>
+        </div>
+    </div>
+
+    {% if not grouped %}
+    <div class="text-center text-muted py-5">暂无周报</div>
+    {% endif %}
+
+    {% for week_start, week_list in grouped.items() %}
+    <div class="mb-4">
+        <div class="d-flex align-items-center mb-2">
+            <span class="badge bg-success me-2 fs-6">
+                {% if week_list %}{{ week_list[0]._sdate }} ~ {{ week_list[0]._edate }}{% else %}{{ week_start }}{% endif %}
+            </span>
+            <span class="text-muted small">{{ week_list|length }} 人提交</span>
+        </div>
+        <div class="row g-2">
+            {% for r in week_list %}
+            <div class="col-md-6">
+                <div class="card h-100 border-start border-4 {{ 'border-success' if user and r.uid == user.id else 'border-light' }}">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge {{ 'bg-success' if user and r.uid == user.id else 'bg-secondary' }}">{{ r._uname }}</span>
+                            {% if user and r.uid == user.id %}
+                            <button class="btn btn-xs btn-outline-danger btn-sm py-0 px-1" onclick="delReport({{ r.id }})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                        <p class="mb-0 small" style="white-space:pre-wrap;word-break:break-word">{{ r.scontext or '' }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="modal fade" id="weekModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">提交周报</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <div class="row g-2">
+                <div class="col-md-6"><label class="form-label">开始日期</label><input type="date" class="form-control form-control-sm" id="weekSdate"></div>
+                <div class="col-md-6"><label class="form-label">结束日期</label><input type="date" class="form-control form-control-sm" id="weekEdate"></div>
+                <div class="col-12"><label class="form-label">本周工作内容 *</label>
+                <textarea class="form-control form-control-sm" id="weekContext" rows="7" placeholder="请描述本周完成的工作内容..."></textarea></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="submitWeek()">提交</button>
+        </div>
+    </div></div>
+</div>
+<script>
+(function() {
+    // 默认填上本周日期
+    const now = new Date();
+    const dow = now.getDay() || 7;
+    const mon = new Date(now); mon.setDate(now.getDate() - dow + 1);
+    const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
+    const fmt = d => d.toISOString().slice(0,10);
+    document.getElementById('weekSdate').value = fmt(mon);
+    document.getElementById('weekEdate').value = fmt(fri);
+})();
+const weekModal = new bootstrap.Modal(document.getElementById('weekModal'));
+window.openAdd = function() { document.getElementById('weekContext').value=''; weekModal.show(); };
+window.submitWeek = function() {
+    const ctx = document.getElementById('weekContext').value.trim();
+    if (!ctx) { _alert('内容不能为空'); return; }
+    const body = { pid: {{ pid }}, scontext: ctx, sdate: document.getElementById('weekSdate').value, edate: document.getElementById('weekEdate').value };
+    fetch('/api/weekreport', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) })
+        .then(r=>r.json()).then(resp=>{ if(resp.success){weekModal.hide();loadContent('/weekreport?pid={{ pid }}');}else _alert(resp.message); });
+};
+window.delReport = function(id) {
+    _confirm('确认删除？', function() {
+        fetch('/api/weekreport/'+id,{method:'DELETE'}).then(r=>r.json()).then(resp=>{ if(resp.success) loadContent('/weekreport?pid={{ pid }}'); });
+    }, true);
+};
+</script>

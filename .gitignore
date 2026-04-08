@@ -69,3 +69,12 @@ Desktop.ini
 application-local.yml
 application-dev.yml
 logs/
+
+# Python
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python

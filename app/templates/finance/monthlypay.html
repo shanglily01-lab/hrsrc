@@ -1,0 +1,757 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-send-check"></i>月度薪资发放</h4>
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>新增</button>
+    </div>
+
+    {% if not grouped %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-send d-block mb-2 fs-2 opacity-25"></i>暂无发放记录
+    </div>
+    {% else %}
+    {% for month, teams in grouped.items() %}
+    {% set mns = namespace(paid=0, total=0, total_u=0, total_cny=0,
+                           exp_rmb=0, exp_u=0, fr_u=0, fr_rmb=0) %}
+    {% for team, recs in teams.items() %}
+        {% for r in recs %}
+            {% set mns.total = mns.total + 1 %}
+            {% if r.status == 'PAID' %}{% set mns.paid = mns.paid + 1 %}{% endif %}
+            {% set _r = r.exchange_rate if r.exchange_rate else 0 %}
+            {% set _amt = r.amount if r.amount else 0 %}
+            {% set _sal_u   = _amt if r.currency == 'U'   else (_amt / _r if _r else 0) %}
+            {% set _sal_cny = _amt if r.currency == 'RMB' else (_amt * _r if _r else 0) %}
+            {% set _exp_rmb = r.expense_rmb if r.expense_rmb else 0 %}
+            {% set _exp_u   = r.expense_u   if r.expense_u   else 0 %}
+            {% set _rp_u    = (r.rp_reward_u if r.rp_reward_u else 0) - (r.rp_penalty_u if r.rp_penalty_u else 0) %}
+            {% set _rp_rmb  = (r.rp_reward_rmb if r.rp_reward_rmb else 0) - (r.rp_penalty_rmb if r.rp_penalty_rmb else 0) %}
+            {% set _fr_u    = r.fr_u if r.fr_u else 0 %}
+            {% set _fr_rmb  = r.fr_rmb if r.fr_rmb else 0 %}
+            {# row total in U: salary_u + exp_u + (exp_rmb/rate) + rp_u + (rp_rmb/rate) + fr_u + (fr_rmb/rate) #}
+            {% set _row_u   = _sal_u
+                              + _exp_u + (_exp_rmb / _r if _r else 0)
+                              + _rp_u  + (_rp_rmb  / _r if _r else 0)
+                              + _fr_u  + (_fr_rmb  / _r if _r else 0) %}
+            {# row total in CNY: salary_cny + exp_rmb + (exp_u*rate) + rp_rmb + (rp_u*rate) + fr_rmb + (fr_u*rate) #}
+            {% set _row_cny = _sal_cny
+                              + _exp_rmb + (_exp_u  * _r if _r else 0)
+                              + _rp_rmb  + (_rp_u   * _r if _r else 0)
+                              + _fr_rmb  + (_fr_u   * _r if _r else 0) %}
+            {% set mns.total_u   = mns.total_u   + _row_u %}
+            {% set mns.total_cny = mns.total_cny + _row_cny %}
+            {% set mns.exp_rmb = mns.exp_rmb + _exp_rmb %}
+            {% set mns.exp_u   = mns.exp_u   + _exp_u %}
+            {% set mns.fr_u    = mns.fr_u    + _fr_u %}
+            {% set mns.fr_rmb  = mns.fr_rmb  + _fr_rmb %}
+        {% endfor %}
+    {% endfor %}
+
+    <div class="card mb-3" style="position:relative;overflow:hidden">
+        {% if mns.paid == mns.total and mns.total > 0 %}
+        <div style="position:absolute;inset:0;pointer-events:none;z-index:10;overflow:hidden;
+                    display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(3,1fr);
+                    align-items:center;justify-items:center">
+            {% for i in range(12) %}
+            <span style="font-size:2.2rem;font-weight:900;color:rgba(40,167,69,0.10);
+                         transform:rotate(-25deg);letter-spacing:.1em;user-select:none;white-space:nowrap">已付</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <!-- 月份标题 -->
+        <div class="card-header d-flex align-items-center gap-3 py-2"
+             style="cursor:pointer" onclick="this.nextElementSibling.classList.toggle('d-none')">
+            <i class="bi bi-calendar-month text-primary"></i>
+            <strong>{{ month }}</strong>
+            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill">{{ mns.total }} 人</span>
+            {% if mns.paid == mns.total and mns.total > 0 %}
+            <span class="badge bg-success rounded-pill">全部已付</span>
+            {% elif mns.paid > 0 %}
+            <span class="badge bg-warning text-dark rounded-pill">部分已付 {{ mns.paid }}/{{ mns.total }}</span>
+            {% else %}
+            <span class="badge bg-secondary rounded-pill">待发放</span>
+            {% endif %}
+            <span class="badge bg-primary rounded-pill fw-bold" style="font-size:.82rem">
+                U 总计 {{ "%.2f"|format(mns.total_u) }}
+            </span>
+            <span class="badge bg-success rounded-pill fw-bold" style="font-size:.82rem">
+                CNY 总计 {{ "%.0f"|format(mns.total_cny) }}
+            </span>
+            {% if mns.exp_rmb > 0 or mns.exp_u > 0 %}
+            <span class="badge bg-warning bg-opacity-25 text-dark rounded-pill" style="font-size:.72rem" title="含报销">
+                <i class="bi bi-receipt me-1"></i>报销
+                {% if mns.exp_rmb > 0 %}CNY {{ "%.0f"|format(mns.exp_rmb) }}{% endif %}
+                {% if mns.exp_u > 0 %}U {{ "%.2f"|format(mns.exp_u) }}{% endif %}
+            </span>
+            {% endif %}
+            {% if mns.fr_u > 0 or mns.fr_rmb > 0 %}
+            <span class="badge bg-info bg-opacity-25 text-dark rounded-pill" style="font-size:.72rem">
+                <i class="bi bi-cash-coin me-1"></i>资金申请
+                {% if mns.fr_u > 0 %}U {{ "%.2f"|format(mns.fr_u) }}{% endif %}
+                {% if mns.fr_rmb > 0 %}CNY {{ "%.0f"|format(mns.fr_rmb) }}{% endif %}
+            </span>
+            {% endif %}
+            {% if mns.paid < mns.total %}
+            <button class="btn btn-success ms-auto px-3" style="font-size:.85rem"
+                    onclick="event.stopPropagation();batchPaid('{{ month }}')" title="整月全部标记已付并生成薪资记录">
+                <i class="bi bi-check-all me-1"></i>整月已付
+            </button>
+            {% else %}
+            <i class="bi bi-chevron-down small text-muted ms-auto"></i>
+            {% endif %}
+        </div>
+
+        <div class="card-body p-0">
+            {% for team, recs in teams.items() %}
+            {% set tns = namespace(u=0, rmb=0, exp_rmb=0, exp_u=0, rp_net_u=0, total_u=0) %}
+            {% for r in recs %}
+                {% set _r2 = r.exchange_rate if r.exchange_rate else 0 %}
+                {% set _a2 = r.amount if r.amount else 0 %}
+                {% if r.amount %}
+                    {% if r.currency == 'U' %}
+                        {% set tns.u = tns.u + _a2 %}
+                        {% if _r2 %}{% set tns.rmb = tns.rmb + _a2 * _r2 %}{% endif %}
+                    {% else %}
+                        {% set tns.rmb = tns.rmb + _a2 %}
+                        {% if _r2 %}{% set tns.u = tns.u + _a2 / _r2 %}{% endif %}
+                    {% endif %}
+                {% endif %}
+                {% set _er2 = r.expense_rmb if r.expense_rmb else 0 %}
+                {% set _eu2 = r.expense_u   if r.expense_u   else 0 %}
+                {% if r.expense_rmb %}{% set tns.exp_rmb = tns.exp_rmb + _er2 %}{% endif %}
+                {% if r.expense_u %}{% set tns.exp_u = tns.exp_u + _eu2 %}{% endif %}
+                {% set _sal_u2  = _a2 if r.currency == 'U' else (_a2 / _r2 if _r2 else 0) %}
+                {% set _rpu2    = (r.rp_reward_u if r.rp_reward_u else 0) - (r.rp_penalty_u if r.rp_penalty_u else 0) %}
+                {% set _rprmb2  = (r.rp_reward_rmb if r.rp_reward_rmb else 0) - (r.rp_penalty_rmb if r.rp_penalty_rmb else 0) %}
+                {% set _fru2    = r.fr_u if r.fr_u else 0 %}
+                {% set _frrmb2  = r.fr_rmb if r.fr_rmb else 0 %}
+                {% set _row_u2  = _sal_u2
+                                  + _eu2 + (_er2 / _r2 if _r2 else 0)
+                                  + _rpu2 + (_rprmb2 / _r2 if _r2 else 0)
+                                  + _fru2 + (_frrmb2 / _r2 if _r2 else 0) %}
+                {% set tns.rp_net_u = tns.rp_net_u + _rpu2 + (_rprmb2 / _r2 if _r2 else 0) %}
+                {% set tns.total_u = tns.total_u + _row_u2 %}
+            {% endfor %}
+
+            <!-- 团队小标题 -->
+            <div class="d-flex align-items-center gap-3 px-4 py-2"
+                 style="background:#f4f6fb;border-top:1px solid #e9ecef">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                         style="width:26px;height:26px;font-size:.7rem;color:#fff;
+                                background:{{ '#0dcaf0' if team == 'web3团队' else ('#4b6cb7' if team == 'AI 团队' else '#6c757d') }}">
+                        {{ team[0] }}
+                    </div>
+                    <span class="fw-500 small">{{ team }}</span>
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill" style="font-size:.65rem">
+                        {{ recs | length }} 人
+                    </span>
+                </div>
+                <div class="d-flex align-items-center gap-3 ms-auto">
+                    <div class="text-center">
+                        <div style="font-size:.65rem" class="text-muted">团队总U</div>
+                        <div class="fw-bold text-primary" style="font-size:.88rem">
+                            {{ "%.2f"|format(tns.total_u) if tns.total_u > 0 else '—' }}
+                        </div>
+                    </div>
+                    {% if tns.exp_rmb > 0 or tns.exp_u > 0 %}
+                    <div class="vr opacity-25"></div>
+                    <div class="text-center">
+                        <div style="font-size:.65rem" class="text-warning"><i class="bi bi-receipt"></i> 报销</div>
+                        <div class="fw-500 text-warning" style="font-size:.82rem">
+                            {% if tns.exp_rmb > 0 %}RMB {{ "%.0f"|format(tns.exp_rmb) }}{% endif %}
+                            {% if tns.exp_u > 0 %}U {{ "%.2f"|format(tns.exp_u) }}{% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if tns.rp_net_u != 0 %}
+                    <div class="vr opacity-25"></div>
+                    <div class="text-center">
+                        <div style="font-size:.65rem" class="{{ 'text-success' if tns.rp_net_u > 0 else 'text-danger' }}">
+                            <i class="bi bi-{{ 'arrow-up' if tns.rp_net_u > 0 else 'arrow-down' }}"></i> 奖惩
+                        </div>
+                        <div class="fw-500 {{ 'text-success' if tns.rp_net_u > 0 else 'text-danger' }}" style="font-size:.82rem">
+                            {{ '+' if tns.rp_net_u > 0 else '' }}{{ "%.2f"|format(tns.rp_net_u) }} U
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="font-size:.82rem">
+                    <thead>
+                        <tr>
+                            <th>TG名</th>
+                            <th>工资<small class="text-muted fw-normal"> CNY/U</small></th>
+                            <th>报销<small class="text-muted fw-normal"> CNY/U</small></th>
+                            <th>奖惩<small class="text-muted fw-normal"> CNY/U</small></th>
+                            <th>资金申请<small class="text-muted fw-normal"> CNY/U</small></th>
+                            <th>总费用<small class="text-muted fw-normal"> U/CNY</small></th>
+                            <th>实发U</th>
+                            <th>汇率</th><th>收款地址</th><th>备注</th><th>状态</th>
+                            <th style="width:100px">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in recs %}
+                        {% set exp_rmb = r.expense_rmb if r.expense_rmb else 0 %}
+                        {% set exp_u   = r.expense_u   if r.expense_u   else 0 %}
+                        {% set rp_reward_u   = r.rp_reward_u   if r.rp_reward_u   else 0 %}
+                        {% set rp_penalty_u  = r.rp_penalty_u  if r.rp_penalty_u  else 0 %}
+                        {% set rp_reward_rmb = r.rp_reward_rmb if r.rp_reward_rmb else 0 %}
+                        {% set rp_penalty_rmb= r.rp_penalty_rmb if r.rp_penalty_rmb else 0 %}
+                        {% set rp_net_u   = rp_reward_u   - rp_penalty_u %}
+                        {% set rp_net_rmb = rp_reward_rmb - rp_penalty_rmb %}
+                        {% set fr_u   = r.fr_u   if r.fr_u   else 0 %}
+                        {% set fr_rmb = r.fr_rmb if r.fr_rmb else 0 %}
+                        {% set _rate = r.exchange_rate if r.exchange_rate else 0 %}
+                        {% set u_salary  = r.amount if r.currency == 'U'   else (r.amount / _rate if (r.amount and _rate) else 0) %}
+                        {% set rmb_salary= r.amount if r.currency == 'RMB' else (r.amount * _rate if (r.amount and _rate) else 0) %}
+                        {% set exp_u_equiv  = exp_u   + (exp_rmb  / _rate if _rate else 0) %}
+                        {% set rp_u_equiv   = rp_net_u + (rp_net_rmb / _rate if _rate else 0) %}
+                        {% set fr_u_equiv   = fr_u + (fr_rmb / _rate if _rate else 0) %}
+                        {% set total_u   = u_salary   + exp_u_equiv + rp_u_equiv + fr_u_equiv %}
+                        {% set total_rmb = rmb_salary + exp_rmb + rp_net_rmb + fr_rmb %}
+                        {% set sal_cny = r.amount if r.currency == 'RMB' else (r.amount * _rate if (r.amount and _rate) else 0) %}
+                        {% set sal_u   = r.amount if r.currency == 'U'   else (r.amount / _rate if (r.amount and _rate) else 0) %}
+                        {% set exp_cny_total = exp_rmb + (exp_u * _rate if _rate else 0) %}
+                        {% set exp_u_total   = exp_u   + (exp_rmb / _rate if _rate else 0) %}
+                        {% set rp_net_cny    = rp_net_rmb + (rp_net_u * _rate if _rate else 0) %}
+                        {% set rp_net_u_equiv= rp_net_u   + (rp_net_rmb / _rate if _rate else 0) %}
+                        {% set fr_cny_total  = fr_rmb + (fr_u * _rate if _rate else 0) %}
+                        {% set fr_u_total    = fr_u   + (fr_rmb / _rate if _rate else 0) %}
+                        <tr>
+                            <td class="fw-500">{{ r.tg_name }}</td>
+                            <!-- 工资 CNY/U -->
+                            <td class="fw-500 small">
+                                {% if r.amount %}
+                                <span class="{{ 'text-success' if r.currency == 'RMB' else 'text-primary' }}">
+                                    {{ "%.0f"|format(sal_cny) if sal_cny else '—' }}
+                                    <span class="text-muted">/</span>
+                                    {{ "%.2f"|format(sal_u) if sal_u else '—' }}
+                                </span>
+                                {% else %}—{% endif %}
+                            </td>
+                            <!-- 报销 CNY/U -->
+                            <td class="small">
+                                {% if exp_cny_total > 0 or exp_u_total > 0 %}
+                                <span class="text-warning">
+                                    {{ "%.0f"|format(exp_cny_total) if exp_cny_total else '0' }}
+                                    <span class="text-muted">/</span>
+                                    {{ "%.2f"|format(exp_u_total) }}
+                                </span>
+                                {% else %}<span class="text-muted">—</span>{% endif %}
+                            </td>
+                            <!-- 奖惩 CNY/U -->
+                            <td class="small">
+                                {% if rp_net_cny != 0 or rp_net_u != 0 %}
+                                {% set rp_sign = '+' if (rp_net_cny + rp_net_u) >= 0 else '' %}
+                                <span class="{{ 'text-success' if (rp_net_cny + rp_net_u) >= 0 else 'text-danger' }}">
+                                    {{ rp_sign }}{{ "%.0f"|format(rp_net_cny) }}
+                                    <span class="text-muted">/</span>
+                                    {{ rp_sign }}{{ "%.2f"|format(rp_net_u_equiv) }}
+                                </span>
+                                {% else %}<span class="text-muted">—</span>{% endif %}
+                            </td>
+                            <!-- 资金申请 CNY/U -->
+                            <td class="small">
+                                {% if fr_cny_total > 0 or fr_u_total > 0 %}
+                                <span class="text-primary">
+                                    {{ "%.0f"|format(fr_cny_total) if fr_cny_total else '0' }}
+                                    <span class="text-muted">/</span>
+                                    {{ "%.2f"|format(fr_u_total) }}
+                                </span>
+                                {% else %}<span class="text-muted">—</span>{% endif %}
+                            </td>
+                            <!-- 总费用 U/CNY -->
+                            <td class="fw-bold small">
+                                {% if total_u > 0 or total_rmb > 0 %}
+                                <span class="text-primary" title="工资+报销+奖惩+资金申请" style="cursor:help;border-bottom:1px dashed #aaa">
+                                    {{ "%.2f"|format(total_u) }}
+                                    <span class="text-muted">/</span>
+                                    <span class="text-success">{{ "%.0f"|format(total_rmb) }}</span>
+                                </span>
+                                {% else %}—{% endif %}
+                            </td>
+                            <!-- 实发U -->
+                            <td class="fw-bold text-primary">
+                                {% if total_u > 0 %}{{ "%.2f"|format(total_u) }}{% else %}—{% endif %}
+                            </td>
+                            <td class="text-muted font-monospace small">
+                                {{ r.exchange_rate if r.exchange_rate else '—' }}
+                            </td>
+                            <td style="max-width:160px">
+                                {% if r.wallet_address %}
+                                <button class="btn btn-link p-0 text-start fw-bold font-monospace"
+                                        style="font-size:.82rem;word-break:break-all;white-space:normal;line-height:1.3"
+                                        onclick="openPayModal('{{ r.tg_name }}', {{ total_u }}, '{{ r.currency }}', '{{ r.wallet_address }}', {{ "%.2f"|format(total_u) }}, '{{ team }}', {{ "%.2f"|format(tns.total_u) if r.tg_name | lower == 'tonny' else '0' }})"
+                                        title="点击查看付款详情">
+                                    {{ r.wallet_address }}
+                                </button>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted small">{{ r.remarks or '—' }}</td>
+                            <td>
+                                {% if r.status == 'PAID' %}
+                                <span class="badge bg-success rounded-pill">已付</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark rounded-pill">待付</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if r.status != 'PAID' %}
+                                <button class="btn btn-sm btn-outline-success py-0 px-2 me-1"
+                                        onclick="markPaid({{ r.id }})" title="标记已付">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                                {% endif %}
+                                <button class="btn btn-sm btn-outline-primary py-0 px-2 me-1"
+                                        onclick='openEdit({{ r | tojson }})'>
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger py-0 px-2"
+                                        onclick="delRow({{ r.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+
+
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>
+
+<!-- 付款详情弹窗 -->
+<div class="modal fade" id="payModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title" id="payModalTitle">付款详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="mb-3">
+                    <div class="text-muted small mb-1">收款人</div>
+                    <div class="fw-bold fs-5" id="payTgName">—</div>
+                </div>
+                <div class="mb-3" id="payTeamRow" style="display:none">
+                    <div class="text-muted small mb-1" id="payTeamLabel">团队总额</div>
+                    <div class="fw-bold fs-4 text-primary" id="payTeamAmount">—</div>
+                    <div class="text-muted" style="font-size:.75rem" id="payIndivRow"></div>
+                </div>
+                <div class="mb-3" id="payIndivOnlyRow">
+                    <div class="text-muted small mb-1">应付金额</div>
+                    <div class="fw-bold fs-4 text-primary" id="payAmount">—</div>
+                </div>
+                <div id="payQrWrap" class="mb-3" style="display:none">
+                    <div class="text-muted small mb-2" id="payQrLabel">收款二维码</div>
+                    <!-- 存储图片时显示 img -->
+                    <img id="payQrImg" src="" alt="QR Code"
+                         style="max-width:220px;width:100%;border:1px solid #dee2e6;border-radius:8px;display:none">
+                    <!-- 无图片时用 JS 生成 -->
+                    <div id="payQrGen" class="d-flex justify-content-center"
+                         style="display:none!important"></div>
+                </div>
+                <div class="p-2 rounded-2 text-start" style="background:#f8f9fa">
+                    <div class="text-muted small mb-1">收款地址</div>
+                    <div class="font-monospace fw-bold" id="payAddr"
+                         style="font-size:.8rem;word-break:break-all;line-height:1.5">—</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新增弹窗 -->
+<div class="modal fade" id="mpAddModal" tabindex="-1">
+    <div class="modal-dialog modal-xl"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title">新增月度薪资发放</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <div class="d-flex align-items-center gap-4 mb-3 p-3 rounded-2" style="background:#f8f9fa">
+                <div class="d-flex align-items-center gap-2">
+                    <label class="form-label small text-muted mb-0 flex-shrink-0">发放月份 *</label>
+                    <input type="month" class="form-control form-control-sm" id="mpMonth" style="max-width:180px">
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <label class="form-label small mb-0 flex-shrink-0">汇率 (U→RMB) <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control form-control-sm" id="mpRate"
+                           step="0.01" placeholder="如 7.25" style="max-width:120px"
+                           oninput="window.refreshAllEquiv()">
+                </div>
+            </div>
+            <div id="mpTeamsContainer">
+                <div class="text-center text-muted py-3 small">加载员工中...</div>
+            </div>
+        </div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveBatch()">
+                <i class="bi bi-check-lg me-1"></i>保存
+            </button>
+        </div>
+    </div></div>
+</div>
+
+<!-- 编辑弹窗 -->
+<div class="modal fade" id="mpEditModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title">编辑发放记录</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editId">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">月份</label>
+                    <input type="month" class="form-control" id="editMonth">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">TG名</label>
+                    <input type="text" class="form-control" id="editTgName">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">单位</label>
+                    <select class="form-select" id="editCurrency">
+                        <option value="U">U (USDT)</option>
+                        <option value="RMB">RMB</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">金额</label>
+                    <input type="number" class="form-control" id="editAmount" step="0.01">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">汇率 (U→RMB)</label>
+                    <input type="number" class="form-control" id="editRate" step="0.01" placeholder="如 7.25">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted">收款地址</label>
+                    <input type="text" class="form-control font-monospace" id="editWallet" placeholder="TRC20 地址">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted">备注</label>
+                    <input type="text" class="form-control" id="editRemarks">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveEdit()">
+                <i class="bi bi-check-lg me-1"></i>保存
+            </button>
+        </div>
+    </div></div>
+</div>
+
+<script>
+const mpAddModal  = bootstrap.Modal.getOrCreateInstance(document.getElementById('mpAddModal'));
+const mpEditModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('mpEditModal'));
+
+// Init tooltips
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el =>
+    new bootstrap.Tooltip(el, {trigger:'hover', html:false}));
+
+const DEFAULT_TEAMS = ['web3团队', 'AI 团队', '分布式团队'];
+const TEAM_COLORS = {
+    'web3团队':  'bg-info text-white',
+    'AI 团队':   'bg-primary text-white',
+    '分布式团队': 'bg-secondary text-white',
+};
+
+function lastMonth() {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+// ── 打开新增弹窗，拉取员工数据 ──
+window.openAdd = function() {
+    document.getElementById('mpMonth').value = lastMonth();
+    document.getElementById('mpRate').value  = '';
+    document.getElementById('mpTeamsContainer').innerHTML =
+        '<div class="text-center text-muted py-3 small">加载员工中...</div>';
+    mpAddModal.show();
+
+    fetch('/api/finance/monthlypay/employees').then(r => r.json()).then(resp => {
+        if (!resp.success) { document.getElementById('mpTeamsContainer').innerHTML = '<div class="text-danger small">加载失败</div>'; return; }
+        renderTeams(resp.data);
+    });
+};
+
+// ── 默认货币：AI 团队用 U，其余用 RMB ──
+const TEAM_DEFAULT_CURRENCY = { 'AI 团队': 'U' };
+function teamDefaultCurrency(team) { return TEAM_DEFAULT_CURRENCY[team] || 'RMB'; }
+
+// ── 渲染各团队员工表格 ──
+function renderTeams(data) {
+    const container = document.getElementById('mpTeamsContainer');
+    const teamBlocks = DEFAULT_TEAMS.map(team => {
+        const emps     = data[team] || [];
+        const colorCls = TEAM_COLORS[team] || 'bg-secondary text-white';
+        const defCur   = teamDefaultCurrency(team);
+        return `
+        <div class="mb-3" data-team="${team}">
+            <div class="d-flex align-items-center gap-2 mb-2 px-1">
+                <span class="badge rounded-pill ${colorCls}" style="font-size:.82rem;padding:.35em .75em">${team}</span>
+                <span class="text-muted small">${emps.length} 人</span>
+            </div>
+            ${emps.length === 0
+                ? '<div class="text-muted small ps-2 mb-1">该团队暂无员工档案</div>'
+                : `<table class="table table-sm align-middle mb-0" style="font-size:.82rem">
+                    <thead><tr>
+                        <th>TG名</th>
+                        <th style="width:55px">方式</th>
+                        <th style="width:120px">金额</th>
+                        <th style="width:120px" class="text-muted">≈ 等值</th>
+                        <th>收款地址</th>
+                        <th>备注</th>
+                    </tr></thead>
+                    <tbody>
+                    ${emps.map(e => {
+                        const empCur   = e.currency || defCur;
+                        const curBadge = empCur === 'U'
+                            ? '<span class="badge bg-primary text-white" style="font-size:.65rem">U</span>'
+                            : '<span class="badge bg-success text-white" style="font-size:.65rem">RMB</span>';
+                        const addrVal = e.saddr || e.vaddr || '';
+                        return `
+                        <tr class="emp-row" data-emp-currency="${empCur}">
+                            <td class="fw-500 small">${e.tgName}</td>
+                            <td>${curBadge}</td>
+                            <td><input type="number" class="form-control form-control-sm emp-amount"
+                                       value="${e.salary}" step="0.01" data-tgname="${e.tgName}"
+                                       oninput="window.refreshAllEquiv()"></td>
+                            <td class="emp-equiv text-muted small">—</td>
+                            <td><input type="text" class="form-control form-control-sm emp-wallet font-monospace"
+                                       style="font-size:.72rem" value="${addrVal}" placeholder="收款地址"></td>
+                            <td><input type="text" class="form-control form-control-sm emp-remarks" placeholder="可选"></td>
+                        </tr>`;
+                    }).join('')}
+                    </tbody>
+                   </table>`
+            }
+        </div>`;
+    });
+    // web3团队 left col, AI团队 + 分布式团队 right col
+    container.innerHTML = `
+    <div class="row g-3">
+        <div class="col-lg-6">${teamBlocks[0]}</div>
+        <div class="col-lg-6">${teamBlocks[1]}${teamBlocks[2]}</div>
+    </div>`;
+}
+
+// ── 刷新所有团队的等值列（读取顶部单一汇率） ──
+window.refreshAllEquiv = function() {
+    const rate = parseFloat(document.getElementById('mpRate').value) || 0;
+    document.querySelectorAll('#mpTeamsContainer .emp-row').forEach(tr => {
+        const currency = tr.dataset.empCurrency || 'U';
+        const amount   = parseFloat(tr.querySelector('.emp-amount').value) || 0;
+        const cell     = tr.querySelector('.emp-equiv');
+        if (!cell) return;
+        if (!rate || !amount) { cell.textContent = '—'; return; }
+        cell.textContent = currency === 'U'
+            ? '≈ RMB ' + Math.round(amount * rate).toLocaleString()
+            : '≈ U '   + (amount / rate).toFixed(2);
+    });
+};
+
+// ── 保存批量 ──
+window.saveBatch = function() {
+    const month = document.getElementById('mpMonth').value;
+    if (!month) { _alert('请选择发放月份'); return; }
+
+    const rate  = document.getElementById('mpRate').value || null;
+    const items = [];
+    document.querySelectorAll('#mpTeamsContainer [data-team]').forEach(teamDiv => {
+        const team = teamDiv.dataset.team;
+        teamDiv.querySelectorAll('.emp-row').forEach(tr => {
+            const tgName  = tr.querySelector('.emp-amount').dataset.tgname;
+            const empCur  = tr.dataset.empCurrency || 'U';
+            const amount  = tr.querySelector('.emp-amount').value;
+            const wallet  = tr.querySelector('.emp-wallet').value.trim();
+            const remarks = tr.querySelector('.emp-remarks').value;
+            if (!amount) return;
+            items.push({ month, team, tgName, currency: empCur,
+                         amount, exchangeRate: rate,
+                         walletAddress: wallet || null,
+                         remarks: remarks || null });
+        });
+    });
+
+    if (!items.length) { _alert('请至少填写一名员工的金额'); return; }
+
+    fetch('/api/finance/monthlypay/batch', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ items })
+    }).then(r => r.json()).then(resp => {
+        if (resp.success) { mpAddModal.hide(); loadContent('/finance/monthlypay'); }
+        else _alert('保存失败: ' + resp.message);
+    });
+};
+
+// ── 编辑单条 ──
+window.openEdit = function(r) {
+    document.getElementById('editId').value      = r.id;
+    document.getElementById('editMonth').value   = r.month || '';
+    document.getElementById('editTgName').value  = r.tg_name || '';
+    document.getElementById('editCurrency').value = r.currency || 'U';
+    document.getElementById('editAmount').value  = r.amount || '';
+    document.getElementById('editRate').value    = r.exchange_rate || '';
+    document.getElementById('editWallet').value  = r.wallet_address || '';
+    document.getElementById('editRemarks').value = r.remarks || '';
+    mpEditModal.show();
+};
+
+window.saveEdit = function() {
+    const id = document.getElementById('editId').value;
+    const body = {
+        month:         document.getElementById('editMonth').value,
+        tgName:        document.getElementById('editTgName').value,
+        currency:      document.getElementById('editCurrency').value,
+        amount:        document.getElementById('editAmount').value || null,
+        exchangeRate:  document.getElementById('editRate').value || null,
+        walletAddress: document.getElementById('editWallet').value.trim() || null,
+        remarks:       document.getElementById('editRemarks').value,
+    };
+    fetch('/api/finance/monthlypay/' + id, {
+        method: 'PUT', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
+    }).then(r => r.json()).then(resp => {
+        if (resp.success) { mpEditModal.hide(); loadContent('/finance/monthlypay'); }
+        else _alert('保存失败: ' + resp.message);
+    });
+};
+
+window.markPaid = function(id) {
+    _confirm('确认标记为已付？同时生成薪资记录。', function() {
+        fetch('/api/finance/monthlypay/' + id + '/paid', { method: 'PUT' })
+            .then(r => r.json()).then(resp => {
+                if (resp.success) loadContent('/finance/monthlypay');
+                else _alert(resp.message);
+            });
+    });
+};
+
+window.batchPaid = function(month) {
+    _confirm('确认将 ' + month + ' 所有待付记录标记为已付？同时生成薪资记录。', function() {
+        fetch('/api/finance/monthlypay/batch-paid/' + month, { method: 'PUT' })
+            .then(r => r.json()).then(resp => {
+                if (resp.success) { _alert(resp.message); loadContent('/finance/monthlypay'); }
+                else _alert('失败: ' + resp.message);
+            });
+    });
+};
+
+window.delRow = function(id) {
+    _confirm('确认删除该记录？', function() {
+        fetch('/api/finance/monthlypay/' + id, { method: 'DELETE' })
+            .then(r => r.json()).then(resp => {
+                if (resp.success) loadContent('/finance/monthlypay');
+                else _alert(resp.message);
+            });
+    }, true);
+};
+
+// ── 付款详情弹窗 ──
+const payModal = new bootstrap.Modal(document.getElementById('payModal'));
+let _payQrInstance = null;
+
+function _showQr(addr, label) {
+    document.getElementById('payQrLabel').textContent = label;
+    document.getElementById('payQrWrap').style.display = '';
+
+    const imgEl = document.getElementById('payQrImg');
+    const genEl = document.getElementById('payQrGen');
+
+    // Reset
+    imgEl.style.display = 'none';
+    genEl.style.cssText = 'display:none!important';
+    genEl.innerHTML = '';
+    if (_payQrInstance) { try { _payQrInstance.clear(); } catch(e) {} _payQrInstance = null; }
+
+    if (addr.startsWith('/') || addr.startsWith('http')) {
+        // It's an image path
+        imgEl.src = addr;
+        imgEl.style.display = '';
+    } else {
+        // Generate QR from address text
+        genEl.style.cssText = 'display:flex;justify-content:center';
+        _payQrInstance = new QRCode(genEl, {
+            text: addr,
+            width: 220, height: 220,
+            colorDark: '#000000', colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+        });
+    }
+}
+
+window.openPayModal = function(tgName, totalU, currency, walletAddr, amountDisplay, teamName, teamTotalU) {
+    document.getElementById('payTgName').textContent = tgName;
+    document.getElementById('payAddr').textContent = walletAddr || '—';
+    document.getElementById('payQrWrap').style.display = 'none';
+
+    const hasTeamTotal = teamTotalU && teamTotalU > 0;
+    document.getElementById('payTeamRow').style.display = hasTeamTotal ? '' : 'none';
+    document.getElementById('payIndivOnlyRow').style.display = hasTeamTotal ? 'none' : '';
+
+    if (hasTeamTotal) {
+        document.getElementById('payTeamLabel').textContent = (teamName || '团队') + ' 总额';
+        document.getElementById('payTeamAmount').textContent = 'U ' + parseFloat(teamTotalU).toFixed(2);
+        document.getElementById('payIndivRow').textContent = tgName + ' 个人：U ' + amountDisplay;
+    } else {
+        document.getElementById('payAmount').textContent = 'U ' + amountDisplay;
+    }
+
+    payModal.show();
+
+    // Fetch QR image from profile
+    fetch('/api/finance/payinfo/' + encodeURIComponent(tgName))
+        .then(r => r.json()).then(resp => {
+            const d = resp.data || {};
+
+            // Determine chain by matching row wallet address against stored saddr/vaddr
+            let imgPath, label, addrText;
+            const wa = (walletAddr || '').toLowerCase();
+            const sa = (d.saddr || '').toLowerCase();
+            const va = (d.vaddr || '').toLowerCase();
+
+            if (wa && sa && wa === sa) {
+                // Exact match: TRC20
+                imgPath = d.saddr_img; label = 'TRC20 收款二维码'; addrText = d.saddr;
+            } else if (wa && va && wa === va) {
+                // Exact match: ERC20
+                imgPath = d.vaddr_img; label = 'ERC20 收款二维码'; addrText = d.vaddr;
+            } else if (d.saddr_img || d.saddr) {
+                // No match or no row address — prefer TRC20 if available
+                imgPath = d.saddr_img; label = 'TRC20 收款二维码'; addrText = d.saddr || walletAddr;
+            } else {
+                // Fallback ERC20
+                imgPath = d.vaddr_img; label = 'ERC20 收款二维码'; addrText = d.vaddr || walletAddr;
+            }
+
+            if (!walletAddr && addrText) {
+                document.getElementById('payAddr').textContent = addrText;
+            }
+
+            if (imgPath) {
+                _showQr('/' + imgPath, label);
+            } else if (addrText) {
+                _showQr(addrText, label);
+            }
+        }).catch(() => {
+            if (walletAddr) _showQr(walletAddr, 'TRC20 收款二维码');
+        });
+};
+
+</script>

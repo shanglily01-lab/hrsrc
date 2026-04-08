@@ -1,0 +1,120 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-check-circle"></i>请假审批</h4>
+        <div class="d-flex gap-2 align-items-center">
+            <span class="badge bg-warning text-dark rounded-pill px-3">
+                待审批 {{ apps | selectattr('status','eq','PENDING') | list | length }}
+            </span>
+        </div>
+    </div>
+
+    {% set pending = apps | selectattr('status','eq','PENDING') | list %}
+    {% set handled = apps | rejectattr('status','eq','PENDING') | list %}
+
+    {% if pending %}
+    <div class="mb-4">
+        <div class="card">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-hourglass-split text-warning"></i>
+                <span>待审批</span>
+                <span class="badge bg-warning text-dark rounded-pill">{{ pending | length }}</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>申请人</th>
+                            <th>类型</th>
+                            <th>日期</th>
+                            <th>时长</th>
+                            <th>原因</th>
+                            <th style="width:140px">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in pending %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:30px;height:30px;font-size:.8rem;background:var(--primary-color)">
+                                        {{ a.employee_name[0] if a.employee_name else '?' }}
+                                    </div>
+                                    <span class="small fw-500">{{ a.employee_name }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge rounded-pill {{ 'bg-primary bg-opacity-10 text-primary' if a.leave_type=='年假' else ('bg-danger bg-opacity-10 text-danger' if a.leave_type=='病假' else 'bg-secondary bg-opacity-10 text-secondary') }}">
+                                    {{ a.leave_type }}
+                                </span>
+                            </td>
+                            <td class="small">{{ a.start_date }} ~ {{ a.end_date }}</td>
+                            <td class="small fw-500">{{ a.duration }}天</td>
+                            <td class="small text-muted" style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.reason }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-success me-1" onclick="approveLeave({{ a.id }})">
+                                    <i class="bi bi-check-lg me-1"></i>批准
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="rejectLeave({{ a.id }})">
+                                    <i class="bi bi-x-lg me-1"></i>拒绝
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card mb-4 text-center py-4 text-muted">
+        <i class="bi bi-check2-all d-block mb-2 fs-2 text-success opacity-50"></i>暂无待审批申请
+    </div>
+    {% endif %}
+
+    {% if handled %}
+    <div class="card">
+        <div class="card-header d-flex align-items-center gap-2">
+            <i class="bi bi-clock-history text-muted"></i><span class="text-muted">已处理记录</span>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>申请人</th><th>类型</th><th>日期</th><th>时长</th><th>原因</th><th>结果</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in handled %}
+                    <tr>
+                        <td class="small">{{ a.employee_name }}</td>
+                        <td><span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary small">{{ a.leave_type }}</span></td>
+                        <td class="small text-muted">{{ a.start_date }} ~ {{ a.end_date }}</td>
+                        <td class="small">{{ a.duration }}天</td>
+                        <td class="small text-muted" style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.reason }}</td>
+                        <td>
+                            <span class="badge rounded-pill {{ 'bg-success' if a.status=='APPROVED' else ('bg-danger' if a.status=='REJECTED' else 'bg-secondary') }}">
+                                {{ '已批准' if a.status=='APPROVED' else ('已拒绝' if a.status=='REJECTED' else '已取消') }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+<script>
+window.approveLeave = function(id) {
+    _confirm('确认批准该申请？', function() {
+        fetch('/api/leave-applications/'+id+'/approve',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({comment:''})})
+            .then(r=>r.json()).then(resp=>{if(resp.success)loadContent('/leave/approve');else _alert(resp.message);});
+    });
+};
+window.rejectLeave = function(id) {
+    const comment=prompt('拒绝原因（可选）','');
+    if(comment===null)return;
+    fetch('/api/leave-applications/'+id+'/reject',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({comment:comment||''})})
+        .then(r=>r.json()).then(resp=>{if(resp.success)loadContent('/leave/approve');else _alert(resp.message);});
+};
+</script>

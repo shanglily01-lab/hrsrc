@@ -1,0 +1,148 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title">
+            <i class="bi bi-list-check"></i>需求管理
+            {% if pro %}<small class="text-muted fw-normal fs-6 ms-1">— {{ pro.pname }}</small>{% endif %}
+        </h4>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" onclick="loadContent('/pro')">
+                <i class="bi bi-arrow-left me-1"></i>返回项目
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="openAdd()">
+                <i class="bi bi-plus-lg me-1"></i>新增需求
+            </button>
+        </div>
+    </div>
+
+    {% if not reqs %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-list-check d-block mb-2 fs-2 opacity-25"></i>暂无需求数据
+    </div>
+    {% else %}
+    {% for model, group in grouped.items() %}
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center gap-2 py-2" style="cursor:pointer"
+             onclick="this.nextElementSibling.classList.toggle('d-none')">
+            <i class="bi bi-layers text-primary"></i>
+            <strong>{{ model or '(未分类)' }}</strong>
+            <span class="badge bg-primary rounded-pill ms-auto">{{ group | list | length }}</span>
+            <i class="bi bi-chevron-down small text-muted"></i>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:140px">功能块</th>
+                            <th>需求项</th>
+                            <th>说明</th>
+                            <th style="width:80px">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in group %}
+                        <tr>
+                            <td class="small text-muted">{{ r.block or '' }}</td>
+                            <td class="small" style="white-space:pre-wrap;max-width:280px">{{ r.item or '' }}</td>
+                            <td class="small text-muted" style="white-space:pre-wrap;max-width:280px">{{ r.ms or '' }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary py-0 px-2 me-1" onclick="openEdit({{ r.id }})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="delReq({{ r.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>
+
+<div class="modal fade" id="reqModal" tabindex="-1">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title" id="reqModalTitle">新增需求</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="reqId">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">模块</label>
+                    <input type="text" class="form-control" id="reqModel" list="modelList">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">功能块</label>
+                    <input type="text" class="form-control" id="reqBlock">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted">需求项</label>
+                    <textarea class="form-control" id="reqItem" rows="3"></textarea>
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted">说明</label>
+                    <textarea class="form-control" id="reqMs" rows="3"></textarea>
+                </div>
+            </div>
+            <datalist id="modelList">
+                {% for m in reqs | map(attribute='model') | select | unique %}
+                <option value="{{ m }}">
+                {% endfor %}
+            </datalist>
+        </div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveReq()"><i class="bi bi-check-lg me-1"></i>保存</button>
+        </div>
+    </div></div>
+</div>
+<script>
+const reqModal = new bootstrap.Modal(document.getElementById('reqModal'));
+window.openAdd = function() {
+    document.getElementById('reqModalTitle').textContent = '新增需求';
+    ['reqId','reqModel','reqBlock','reqItem','reqMs'].forEach(id => document.getElementById(id).value = '');
+    reqModal.show();
+};
+window.openEdit = function(id) {
+    fetch('/api/req/' + id).then(r => r.json()).then(resp => {
+        const d = resp.data;
+        document.getElementById('reqModalTitle').textContent = '编辑需求';
+        document.getElementById('reqId').value = d.id;
+        document.getElementById('reqModel').value = d.model || '';
+        document.getElementById('reqBlock').value = d.block || '';
+        document.getElementById('reqItem').value = d.item || '';
+        document.getElementById('reqMs').value = d.ms || '';
+        reqModal.show();
+    });
+};
+window.saveReq = function() {
+    const id = document.getElementById('reqId').value;
+    const body = {
+        pid: {{ pid }},
+        model: document.getElementById('reqModel').value,
+        block: document.getElementById('reqBlock').value,
+        item: document.getElementById('reqItem').value,
+        ms: document.getElementById('reqMs').value
+    };
+    fetch(id ? '/api/req/' + id : '/api/req', {
+        method: id ? 'PUT' : 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+    }).then(r => r.json()).then(resp => {
+        if (resp.success) { reqModal.hide(); loadContent('/req?pid={{ pid }}'); }
+        else _alert(resp.message);
+    });
+};
+window.delReq = function(id) {
+    _confirm('确认删除？', function() {
+        fetch('/api/req/' + id, {method:'DELETE'})
+            .then(r => r.json()).then(resp => { if (resp.success) loadContent('/req?pid={{ pid }}'); });
+    }, true);
+};
+</script>

@@ -1,0 +1,52 @@
+<div class="container-fluid">
+    <div class="page-header">
+        <h4 class="page-title"><i class="bi bi-clock-history"></i>全员打卡记录</h4>
+        {% if all_users %}
+        <span class="text-muted small">近30天 · {{ all_users | length }}人</span>
+        {% endif %}
+    </div>
+
+    {% if not grouped %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-calendar-x d-block mb-2 fs-2 opacity-25"></i>暂无打卡记录
+    </div>
+    {% else %}
+    {% for date, day_records in grouped.items() %}
+    <div class="mb-3">
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge bg-primary rounded-pill px-3">{{ date }}</span>
+            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill">{{ day_records | length }} 条</span>
+        </div>
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr><th>用户名</th><th>类型</th><th>打卡时间</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for r in day_records %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:26px;height:26px;font-size:.75rem;background:{{ '#4b6cb7' if r.ampm=='AM' else '#182848' }}">
+                                        {{ r.uname[0] if r.uname else '?' }}
+                                    </div>
+                                    <span class="small fw-500">{{ r.uname }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge rounded-pill {{ 'bg-success' if r.ampm == 'AM' else 'bg-primary' }}">
+                                    {{ '上班' if r.ampm == 'AM' else '下班' }}
+                                </span>
+                            </td>
+                            <td class="font-monospace small text-muted">{{ r.hinttime }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>

@@ -1,0 +1,61 @@
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>项目管理</h4>
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="bi bi-plus-lg me-1"></i>新增项目</button>
+    </div>
+    <div class="card"><div class="card-body p-0"><div class="table-responsive">
+        <table class="table table-hover table-sm align-middle mb-0">
+            <thead class="table-light"><tr><th>ID</th><th>项目名称</th><th>备注</th><th>操作</th></tr></thead>
+            <tbody>
+                {% for p in pros %}
+                <tr>
+                    <td>{{ p.id }}</td>
+                    <td><strong>{{ p.pname }}</strong></td>
+                    <td style="max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.pmark or '' }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="openEdit({{ p.id }},'{{ p.pname|replace("'","\\'") }}','{{ (p.pmark or '')|replace("'","\\'") }}')">编辑</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="delPro({{ p.id }})">删除</button>
+                        <a class="btn btn-sm btn-outline-secondary" href="#" onclick="loadContent('/req?pid={{ p.id }}')">需求</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="#" onclick="loadContent('/plan?pid={{ p.id }}')">计划</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="#" onclick="loadContent('/version?pid={{ p.id }}')">版本</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="#" onclick="loadContent('/dayreport?pid={{ p.id }}')">日报</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="#" onclick="loadContent('/weekreport?pid={{ p.id }}')">周报</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="#" onclick="loadContent('/meetreport?pid={{ p.id }}')">例会</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="#" onclick="loadContent('/reqmark?pid={{ p.id }}')">运营需求</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="text-center text-muted py-3">暂无项目</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div></div></div>
+</div>
+
+<div class="modal fade" id="proModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title" id="proModalTitle">新增项目</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <input type="hidden" id="proId">
+            <div class="mb-2"><label class="form-label">项目名称 *</label><input type="text" class="form-control form-control-sm" id="proName"></div>
+            <div class="mb-2"><label class="form-label">备注</label><textarea class="form-control form-control-sm" id="proMark" rows="3"></textarea></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="savePro()">保存</button>
+        </div>
+    </div></div>
+</div>
+<script>
+const proModal = new bootstrap.Modal(document.getElementById('proModal'));
+window.openAdd = function() { document.getElementById('proModalTitle').textContent='新增项目'; document.getElementById('proId').value=''; document.getElementById('proName').value=''; document.getElementById('proMark').value=''; proModal.show(); };
+window.openEdit = function(id, name, mark) { document.getElementById('proModalTitle').textContent='编辑项目'; document.getElementById('proId').value=id; document.getElementById('proName').value=name; document.getElementById('proMark').value=mark; proModal.show(); };
+window.savePro = function() {
+    const id = document.getElementById('proId').value;
+    const body = { pname: document.getElementById('proName').value, pmark: document.getElementById('proMark').value };
+    if (!body.pname) { _alert('项目名称不能为空'); return; }
+    fetch(id ? '/api/pro/'+id : '/api/pro', { method: id ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
+        .then(r=>r.json()).then(resp=>{ if(resp.success){proModal.hide();loadContent('/pro');}else _alert(resp.message); });
+};
+window.delPro = function(id) { _confirm('确认删除该项目？', function() { fetch('/api/pro/'+id,{method:'DELETE'}).then(r=>r.json()).then(resp=>{if(resp.success)loadContent('/pro');}); }, true); };
+</script>
