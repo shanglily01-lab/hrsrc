@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import bcrypt
 from fastapi import Request, Depends, HTTPException
 from fastapi.responses import RedirectResponse

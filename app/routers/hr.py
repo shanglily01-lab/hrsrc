@@ -1,3 +1,4 @@
+from __future__ import annotations
 from datetime import datetime
 from fastapi import APIRouter, Request, Depends, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
