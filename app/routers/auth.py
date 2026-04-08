@@ -10,6 +10,7 @@ from sqlalchemy import text
 from app.database import get_db
 from app.models.user import User
 from app.auth import verify_password
+from app.config import now_cst
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -102,8 +103,7 @@ async def do_login(
     # 更新登录时间和 IP
     try:
         ip = request.headers.get("X-Forwarded-For", request.client.host)
-        from datetime import datetime
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = now_cst().strftime("%Y-%m-%d %H:%M:%S")
         db.execute(
             text("UPDATE t_user SET lodate=:d, ip=:ip WHERE id=:id"),
             {"d": now, "ip": ip, "id": user.id}

@@ -1,5 +1,18 @@
 import os
+from datetime import datetime, date, timezone, timedelta
 from dotenv import load_dotenv
+
+CST = timezone(timedelta(hours=8))
+
+
+def now_cst() -> datetime:
+    """返回 UTC+8 当前时间（服务器/DB 均为 UTC，统一用此函数）"""
+    return datetime.now(tz=CST).replace(tzinfo=None)
+
+
+def today_cst() -> date:
+    """返回 UTC+8 当前日期"""
+    return datetime.now(tz=CST).date()
 
 load_dotenv()
 

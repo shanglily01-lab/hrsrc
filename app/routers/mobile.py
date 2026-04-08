@@ -4,6 +4,7 @@ import os
 import shutil
 import uuid
 from datetime import datetime, date, timedelta
+from app.config import now_cst, today_cst
 
 from fastapi import APIRouter, Request, Depends, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -36,11 +37,11 @@ def _user(request: Request, db: Session) -> User | None:
 
 
 def _today() -> str:
-    return datetime.now().strftime("%Y-%m-%d")
+    return now_cst().strftime("%Y-%m-%d")
 
 
 def _month() -> str:
-    return datetime.now().strftime("%Y-%m")
+    return now_cst().strftime("%Y-%m")
 
 
 def _redirect_login():
@@ -122,7 +123,7 @@ def page_checkin(request: Request, db: Session = Depends(get_db)):
     late = len([r for r in month_records if r.clock_in and _is_late(r.clock_in)])
 
     # Work days in month so far
-    today_dt = date.today()
+    today_dt = today_cst()
     first = today_dt.replace(day=1)
     work_days = sum(1 for d in range((today_dt - first).days + 1)
                     if (first + timedelta(days=d)).weekday() < 5)
@@ -131,7 +132,7 @@ def page_checkin(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse("mobile/checkin.html", {
         "request": request,
         "uname": user.uname,
-        "today": datetime.now().strftime("%Y年%m月%d日"),
+        "today": now_cst().strftime("%Y年%m月%d日"),
         "today_record": today_record,
         "month_records": month_records,
         "stats": {"days": days, "late": late, "absent": absent},
@@ -156,7 +157,7 @@ async def api_checkin(request: Request, db: Session = Depends(get_db)):
     body = await request.json()
     clock_type = body.get("type")  # "in" or "out"
     today = _today()
-    now_time = datetime.now().strftime("%H:%M")
+    now_time = now_cst().strftime("%H:%M")
 
     record = db.query(CheckIn).filter(
         CheckIn.uid == user.id,
@@ -210,7 +211,7 @@ def page_dayreport(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse("mobile/dayreport.html", {
         "request": request,
         "uname": user.uname,
-        "today": datetime.now().strftime("%Y年%m月%d日"),
+        "today": now_cst().strftime("%Y年%m月%d日"),
         "submitted": submitted,
         "projects": projects,
         "active_tab": "dayreport",
@@ -254,7 +255,7 @@ async def api_dayreport(request: Request, db: Session = Depends(get_db)):
 # ─────────────────────────────────────────────
 
 def _week_range() -> tuple[str, str]:
-    today = date.today()
+    today = today_cst()
     monday = today - timedelta(days=today.weekday())
     sunday = monday + timedelta(days=6)
     return monday.strftime("%Y-%m-%d"), sunday.strftime("%Y-%m-%d")
@@ -334,7 +335,7 @@ def page_expense(request: Request, db: Session = Depends(get_db)):
         FinExpense.applicant == user.uname
     ).order_by(FinExpense.id.desc()).limit(10).all()
 
-    today = date.today()
+    today = today_cst()
     return templates.TemplateResponse("mobile/expense.html", {
         "request": request,
         "uname": user.uname,
@@ -374,7 +375,7 @@ async def api_expense(
             shutil.copyfileobj(image.file, f)
         image_path = "/" + fpath.replace("\\", "/")
 
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = now_cst().strftime("%Y-%m-%d %H:%M:%S")
     r = FinExpense(
         expense_month=expense_month,
         expense_date=expense_date,

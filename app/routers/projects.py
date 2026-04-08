@@ -1,5 +1,6 @@
 from __future__ import annotations
 from datetime import datetime, timedelta
+from app.config import now_cst
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -21,7 +22,7 @@ def _user(request: Request, db: Session) -> User | None:
 
 
 def now_str():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return now_cst().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _can_access_pid(user: User, pid: int, db: Session) -> bool:
@@ -140,7 +141,7 @@ def dayreport_page(request: Request, pid: int = 0, days: int = 30, db: Session =
         return RedirectResponse("/login")
     if not _can_access_pid(user, pid, db):
         return HTMLResponse("无权访问该项目", status_code=403)
-    since = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    since = (now_cst() - timedelta(days=days)).strftime("%Y-%m-%d")
     reports = (db.query(DayReport)
                .filter(DayReport.pid == pid, DayReport.sdate >= since)
                .order_by(DayReport.sdate.desc(), DayReport.id.desc())

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
+from app.config import now_cst
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -21,7 +22,7 @@ def _user(request: Request, db: Session) -> User | None:
 
 
 def now_str():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return now_cst().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def ok(data=None, msg="success"):

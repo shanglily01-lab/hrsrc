@@ -1,0 +1,12 @@
+{
+  "name": "HR系统",
+  "short_name": "HR",
+  "start_url": "/mobile/checkin",
+  "display": "standalone",
+  "background_color": "#0053dc",
+  "theme_color": "#0053dc",
+  "icons": [
+    { "src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from datetime import datetime
 from fastapi import APIRouter, Request, Depends, Form, UploadFile, File
+from app.config import now_cst, today_cst  # noqa: E402 (after stdlib)
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -81,7 +82,7 @@ def _user(request: Request, db: Session) -> User | None:
 
 
 def now_str():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return now_cst().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def ok(data=None, message="success"):
@@ -268,7 +269,7 @@ def hintcard_page(request: Request, db: Session = Depends(get_db)):
     user = _user(request, db)
     if not user:
         return RedirectResponse("/login")
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = now_cst().strftime("%Y-%m-%d")
     records = db.query(HintCard).filter(HintCard.uid == user.id, HintCard.hinttime.like(f"{today}%")).all()
     return templates.TemplateResponse("hintcard.html", {"request": request, "user": user, "records": records, "today": today})
 
@@ -291,9 +292,9 @@ def hintcard_list(request: Request, db: Session = Depends(get_db)):
     user = _user(request, db)
     if not user or not is_admin(user):
         return HTMLResponse("无权访问", 403)
-    from datetime import datetime, timedelta
+    from datetime import timedelta
     from collections import OrderedDict
-    since = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+    since = (now_cst() - timedelta(days=30)).strftime("%Y-%m-%d")
     records = (db.query(HintCard)
                .filter(HintCard.hinttime >= since)
                .order_by(HintCard.hinttime.desc())

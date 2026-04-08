@@ -3,6 +3,7 @@ import io
 import calendar
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
+from app.config import now_cst
 from fastapi import APIRouter, Request, Depends, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -73,7 +74,7 @@ def to_decimal(val) -> Decimal | None:
 
 
 def now_str():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return now_cst().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _month_period(month_str: str) -> str:
