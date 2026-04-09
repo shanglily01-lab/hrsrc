@@ -72,7 +72,6 @@ async def mobile_login_post(
     uname = str(form.get("uname", "")).strip()
     pwd = str(form.get("pwd", "")).strip()
     captcha = str(form.get("captcha", "")).strip().upper()
-
     ctx = {"request": request, "error": None}
 
     sess_cap = str(request.session.get("captcha", "")).upper()
@@ -393,3 +392,53 @@ async def api_expense(
     db.add(r)
     db.commit()
     return JSONResponse({"success": True})
+
+
+# ─────────────────────────────────────────────
+# 批量报销（OCR 多行）
+# ─────────────────────────────────────────────
+
+@router.post("/api/mobile/expense/batch")
+async def api_expense_batch(request: Request, db: Session = Depends(get_db)):
+    user = _user(request, db)
+    if not user:
+        return JSONResponse({"success": False, "message": "未登录"})
+
+    body = await request.json()
+    items = body.get("items", [])
+    image_path = body.get("image_path", None)
+
+    if not items:
+        return JSONResponse({"success": False, "message": "没有报销项目"})
+
+    now = now_cst().strftime("%Y-%m-%d %H:%M:%S")
+    saved = 0
+    for it in items:
+        try:
+            amount = float(it.get("amount") or 0)
+        except (ValueError, TypeError):
+            continue
+        description = (it.get("description") or "").strip()
+        if not description or amount <= 0:
+            continue
+        r = FinExpense(
+            expense_month=it.get("expense_month", ""),
+            expense_date=it.get("expense_date", ""),
+            category=it.get("category", "其他"),
+            currency=it.get("currency", "CNY"),
+            amount=amount,
+            description=description,
+            applicant=user.uname,
+            remarks=it.get("remarks", ""),
+            image_path=image_path,
+            status="PENDING",
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(r)
+        saved += 1
+
+    if saved == 0:
+        return JSONResponse({"success": False, "message": "无有效报销项目"})
+    db.commit()
+    return JSONResponse({"success": True, "saved": saved})
