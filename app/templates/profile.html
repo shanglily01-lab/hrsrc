@@ -160,7 +160,7 @@
                     {% endif %}
                     {% if profile and profile.saddr_img %}
                     <div id="saddrPreview" class="mt-1">
-                        <img src="{{ profile.saddr_img }}" alt="TRC20 收款二维码" class="rounded-3 border" style="max-height:180px;max-width:100%;object-fit:contain">
+                        <img src="{{ profile.saddr_img }}" alt="TRC20 收款二维码" class="rounded-3 border" style="max-height:180px;max-width:100%;object-fit:contain;cursor:zoom-in" onclick="zoomQR(this)">
                     </div>
                     {% else %}
                     <div id="saddrPreview" class="mt-1"></div>
@@ -194,7 +194,7 @@
                     {% endif %}
                     {% if profile and profile.vaddr_img %}
                     <div id="vaddrPreview" class="mt-1">
-                        <img src="{{ profile.vaddr_img }}" alt="ERC20 收款二维码" class="rounded-3 border" style="max-height:180px;max-width:100%;object-fit:contain">
+                        <img src="{{ profile.vaddr_img }}" alt="ERC20 收款二维码" class="rounded-3 border" style="max-height:180px;max-width:100%;object-fit:contain;cursor:zoom-in" onclick="zoomQR(this)">
                     </div>
                     {% else %}
                     <div id="vaddrPreview" class="mt-1"></div>
@@ -265,9 +265,22 @@ window.uploadFile = function(field, fileInputId, previewId, addrFieldId) {
             }
             // Show image preview
             const preview = document.getElementById(previewId);
-            preview.innerHTML = '<img src="' + url + '" alt="收款二维码" class="rounded-3 border" style="max-height:180px;max-width:100%;object-fit:contain">';
+            preview.innerHTML = '<img src="' + url + '" alt="收款二维码" class="rounded-3 border" style="max-height:180px;max-width:100%;object-fit:contain;cursor:zoom-in" onclick="zoomQR(this)">';
         });
 };
+window.zoomQR = function(img) {
+    let modal = document.getElementById('_qrZoomModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = '_qrZoomModal';
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out';
+        modal.onclick = () => modal.remove();
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = '<img src="' + img.src + '" style="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5)">';
+    document.body.appendChild(modal);
+};
+
 window.saveSecrete = function() {
     const scode = document.getElementById('scode').value.trim();
     fetch('/api/profile/secrete', {
