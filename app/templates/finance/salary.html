@@ -69,8 +69,15 @@
                 实发 U {{ "%.0f" | format(mns.u) }}
             </span>
             {% endif %}
+            {% if is_admin %}
+            <button class="btn btn-outline-secondary btn-sm py-0 px-2 ms-auto me-1" style="font-size:.75rem"
+                    onclick="event.stopPropagation();regenSalary('{{ month_key }}')"
+                    title="删除本月薪资记录并从月度发放重新生成">
+                <i class="bi bi-arrow-clockwise me-1"></i>重新生成
+            </button>
+            {% else %}
             <i class="bi bi-chevron-down small text-muted ms-auto"></i>
-        </div>
+            {% endif %}
 
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0" style="font-size:.82rem">
@@ -283,5 +290,18 @@ window.saveSalEdit = function() {
             _alert('保存失败: ' + resp.message);
         }
     });
+};
+window.regenSalary = function(month) {
+    _confirm('确认删除 ' + month + ' 的薪资记录并从月度发放重新生成？', function() {
+        fetch('/api/finance/salary/reset-and-regenerate/' + month, {method:'POST'})
+            .then(r => r.json()).then(resp => {
+                if (resp.success) {
+                    _alert(resp.message);
+                    loadContent('/finance/salary');
+                } else {
+                    _alert('失败: ' + resp.message);
+                }
+            });
+    }, true);
 };
 </script>
