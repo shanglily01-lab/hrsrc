@@ -96,6 +96,12 @@
             </button>
             {% else %}
             <i class="bi bi-chevron-down small text-muted ms-auto"></i>
+            {% if is_admin %}
+            <button class="btn btn-outline-primary btn-sm px-3 ms-1" style="font-size:.82rem"
+                    onclick="event.stopPropagation();regenSalary('{{ month }}')" title="从本月发放数据重新生成薪资记录">
+                <i class="bi bi-arrow-clockwise me-1"></i>生成薪资记录
+            </button>
+            {% endif %}
             {% endif %}
         </div>
 
@@ -753,5 +759,12 @@ window.openPayModal = function(tgName, totalU, currency, walletAddr, amountDispl
             if (walletAddr) _showQr(walletAddr, 'TRC20 收款二维码');
         });
 };
-
+window.regenSalary = function(month) {
+    _confirm('确认从 ' + month + ' 的发放数据重新生成薪资记录？（会先删除已有的自动生成记录）', function() {
+        fetch('/api/finance/salary/reset-and-regenerate/' + month, {method:'POST'})
+            .then(r => r.json()).then(resp => {
+                _alert(resp.success ? resp.message : ('失败: ' + resp.message));
+            });
+    }, true);
+};
 </script>
