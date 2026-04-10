@@ -74,11 +74,13 @@
                                 {% else %}
                                 <span class="text-muted" id="expImg{{ e.id }}" style="font-size:.75rem">—</span>
                                 {% endif %}
+                                {% if is_admin %}
                                 <label class="btn btn-link btn-sm p-0 text-muted" title="上传/替换凭证" style="line-height:1">
                                     <i class="bi bi-upload" style="font-size:.8rem"></i>
                                     <input type="file" accept="image/*" style="display:none"
                                            onchange="uploadExpImg({{ e.id }}, this)">
                                 </label>
+                                {% endif %}
                                 </div>
                             </td>
                             <td>
