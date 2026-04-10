@@ -1596,6 +1596,7 @@ def page_monthlypay(request: Request, db: Session = Depends(get_db)):
 
     return templates.TemplateResponse("finance/monthlypay.html", {
         "request": request, "grouped": grouped,
+        "is_admin": is_finance(user),
     })
 
 
