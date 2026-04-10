@@ -1807,6 +1807,96 @@ def batch_mark_paid(month: str, db: Session = Depends(get_db)):
     return ok(message=f"已付 {len(records)} 条，生成薪资记录 {synced} 条")
 
 
+@router.post("/api/finance/salary/reset-and-regenerate/{month}")
+def reset_and_regenerate_salary(month: str, request: Request, db: Session = Depends(get_db)):
+    """删除指定月份的薪资记录（source=monthly_pay），重置月度发放状态为UNPAID，重新生成。"""
+    user = _user(request, db)
+    if not user:
+        return err("未登录")
+    if not is_finance(user):
+        return err("无权限")
+
+    # 1. 删除该月薪资记录（仅 monthly_pay 来源）
+    deleted = db.query(FinSalaryRecord).filter(
+        FinSalaryRecord.month == month,
+        FinSalaryRecord.source == "monthly_pay",
+    ).delete()
+
+    # 2. 重置月度发放为 UNPAID
+    db.query(FinMonthlyPayment).filter(
+        FinMonthlyPayment.month == month,
+    ).update({"status": "UNPAID", "updated_at": now_str()})
+
+    db.commit()
+
+    # 3. 重新批量确认生成
+    records = db.query(FinMonthlyPayment).filter(
+        FinMonthlyPayment.month == month,
+    ).all()
+    if not records:
+        return err(f"月度发放里没有 {month} 的记录")
+
+    synced = 0
+    for r in records:
+        r.status = "PAID"
+        r.updated_at = now_str()
+
+        year_label = r.month[:4] if r.month and len(r.month) >= 4 else None
+        emp = db.query(FinEmployee).filter(FinEmployee.tg_name == r.tg_name).first()
+        if not r.wallet_address:
+            prof = (db.query(Profile).join(User, User.id == Profile.uid)
+                    .filter((User.uname.ilike(r.tg_name)) | (Profile.tg.ilike(r.tg_name))).first())
+            wallet = (prof.saddr or prof.vaddr) if prof else None
+        else:
+            wallet = r.wallet_address
+        position = emp.position if emp else None
+        base_salary = _parse_base_salary(emp)
+
+        if r.currency == "U":
+            paid_u = float(r.amount) if r.amount else None
+            paid_rmb = round(float(r.amount * r.exchange_rate), 2) if r.amount and r.exchange_rate else None
+        else:
+            paid_rmb = float(r.amount) if r.amount else None
+            paid_u = round(float(r.amount / r.exchange_rate), 4) if r.amount and r.exchange_rate else None
+
+        exp_rmb, exp_u = _approved_expenses(db, r.month, r.tg_name)
+        reward_amt, penalty_amt = _rp_net(db, r.month, r.tg_name, r.currency)
+        paid_u_dec = to_decimal(paid_u)
+        rate = float(r.exchange_rate) if r.exchange_rate else 0
+        exp_rmb_u = float(exp_rmb or 0) / rate if rate else 0
+        rp_net = float(reward_amt or 0) - float(penalty_amt or 0)
+        total_u = float(paid_u_dec or 0) + float(exp_u or 0) + exp_rmb_u + (rp_net if r.currency == "U" else rp_net / rate if rate else 0)
+        sr = FinSalaryRecord(
+            year_label=year_label,
+            month=r.month,
+            tg_name=r.tg_name,
+            position=position,
+            base_salary=base_salary,
+            performance_salary=Decimal("0"),
+            bonus=Decimal("0"),
+            expense_rmb=exp_rmb if exp_rmb else None,
+            expense_u=exp_u if exp_u else None,
+            reward_amount=reward_amt if reward_amt else None,
+            penalty_amount=penalty_amt if penalty_amt else None,
+            paid_rmb=to_decimal(paid_rmb),
+            paid_u=paid_u_dec,
+            actual_amount=to_decimal(total_u) if total_u else None,
+            exchange_rate=r.exchange_rate,
+            wallet_address=wallet,
+            period=_month_period(r.month) if r.month else None,
+            remarks=r.remarks,
+            payment_date=now_str()[:10],
+            status="PAID",
+            source="monthly_pay",
+            created_at=now_str(), updated_at=now_str(),
+        )
+        db.add(sr)
+        synced += 1
+
+    db.commit()
+    return ok(message=f"已删除旧记录 {deleted} 条，重新生成薪资记录 {synced} 条")
+
+
 @router.delete("/api/finance/monthlypay/{rid}")
 def delete_monthlypay(rid: int, db: Session = Depends(get_db)):
     db.query(FinMonthlyPayment).filter(FinMonthlyPayment.id == rid).delete()
