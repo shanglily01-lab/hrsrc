@@ -1023,9 +1023,12 @@ def page_fundusage(request: Request, db: Session = Depends(get_db)):
         if cat not in FR_CATEGORIES:
             cat = "其他"
         cur = r.currency or "CNY"
+        rate = float(r.exchange_rate) if r.exchange_rate else None
+        cny_val = (amt * rate) if (cur == "U" and rate) else (amt if cur != "U" else None)
         grouped[mk].append({
             "id": r.id, "usage_month": r.usage_month, "currency": cur,
             "amount": float(r.amount) if r.amount else None,
+            "exchange_rate": rate, "cny_val": cny_val,
             "category": cat, "description": r.description,
             "operator": r.operator, "remarks": r.remarks,
         })
@@ -1229,6 +1232,7 @@ def get_fundusage(uid: int, db: Session = Depends(get_db)):
         return err("不存在")
     return ok({"id": r.id, "usageMonth": r.usage_month, "currency": r.currency,
                "amount": float(r.amount) if r.amount else None,
+               "exchangeRate": float(r.exchange_rate) if r.exchange_rate else None,
                "category": r.category, "description": r.description,
                "operator": r.operator, "remarks": r.remarks})
 
@@ -1248,6 +1252,7 @@ async def create_fundusage(request: Request, db: Session = Depends(get_db)):
         usage_month=body.get("usageMonth"),
         currency=body.get("currency", "U"),
         amount=to_decimal(body.get("amount")),
+        exchange_rate=to_decimal(body.get("exchangeRate")) if body.get("exchangeRate") else None,
         category=body.get("category", "其他"),
         description=body.get("description"),
         operator=operator,
@@ -1268,6 +1273,8 @@ async def update_fundusage(uid: int, request: Request, db: Session = Depends(get
     r.usage_month = body.get("usageMonth", r.usage_month)
     r.currency = body.get("currency", r.currency)
     r.amount = to_decimal(body.get("amount")) if body.get("amount") is not None else r.amount
+    if body.get("exchangeRate") is not None:
+        r.exchange_rate = to_decimal(body.get("exchangeRate")) or None
     r.category = body.get("category", r.category)
     r.description = body.get("description", r.description)
     r.operator = body.get("operator", r.operator)

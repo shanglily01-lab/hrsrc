@@ -8,6 +8,15 @@ from app.database import engine, Base
 # 确保上传目录存在
 for _d in ("uploads/expenses", "uploads/fundusage", "uploads/images", "static"):
     os.makedirs(_d, exist_ok=True)
+
+# 补充数据库列（如已存在则忽略错误）
+def _add_column_if_missing(engine, table, col_def):
+    try:
+        with engine.connect() as conn:
+            conn.execute(__import__("sqlalchemy").text(f"ALTER TABLE {table} ADD COLUMN {col_def}"))
+            conn.commit()
+    except Exception:
+        pass
 from app.routers import auth, pages, finance, hr, projects, leave, announcement, team
 from app.routers import mobile
 
@@ -15,6 +24,8 @@ from app.routers import mobile
 import app.models.team    # noqa: F401
 import app.models.mobile  # noqa: F401 — 注册 CheckIn 到 Base
 Base.metadata.create_all(bind=engine, checkfirst=True)
+
+_add_column_if_missing(engine, "fin_fund_usage", "exchange_rate DECIMAL(10,4) DEFAULT NULL")
 
 app = FastAPI(title="分布式项目管理系统")
 

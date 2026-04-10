@@ -113,6 +113,7 @@ class FinFundUsage(Base):
     usage_month = Column(Text)          # YYYY-MM
     currency = Column(Text)             # U / RMB
     amount = Column(Numeric(30, 4))
+    exchange_rate = Column(Numeric(10, 4))  # U→CNY 汇率（仅 currency=U 时有意义）
     category = Column(Text)             # 薪资 / 运营 / 推广 / 其他
     description = Column(Text)          # 使用说明
     operator = Column(Text)             # 操作人

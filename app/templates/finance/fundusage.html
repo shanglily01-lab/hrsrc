@@ -179,6 +179,8 @@
                             <th>类别</th>
                             <th>币种</th>
                             <th>金额</th>
+                            <th>汇率</th>
+                            <th>CNY折算</th>
                             <th>用途说明</th>
                             <th>操作人</th>
                             <th>备注</th>
@@ -198,6 +200,12 @@
                                 <span class="badge rounded-pill {{ 'bg-primary text-white' if r.currency == 'U' else 'bg-success text-white' }}">{{ r.currency }}</span>
                             </td>
                             <td class="fw-500">{{ "%.2f"|format(r.amount) if r.amount else '—' }}</td>
+                            <td class="text-muted small">{{ "%.4g"|format(r.exchange_rate) if r.exchange_rate else '—' }}</td>
+                            <td class="fw-500">
+                                {% if r.cny_val %}
+                                <span class="text-success">CNY {{ "%.0f"|format(r.cny_val) }}</span>
+                                {% else %}—{% endif %}
+                            </td>
                             <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
                                 title="{{ r.description }}">{{ r.description or '—' }}</td>
                             <td>{{ r.operator or '—' }}</td>
@@ -205,7 +213,10 @@
                                 title="{{ r.remarks }}">{{ r.remarks or '' }}</td>
                             {% if is_admin %}
                             <td>
-                                <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="delUsage({{ r.id }})">
+                                <button class="btn btn-sm btn-outline-secondary py-0 px-1 me-1" onclick="editUsage({{ r.id }})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="delUsage({{ r.id }})">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </td>
@@ -221,7 +232,7 @@
                                 {% if month_u > 0 and month_cny > 0 %} / {% endif %}
                                 {% if month_cny > 0 %}<span class="text-danger">CNY {{ "%.0f"|format(month_cny) }}</span>{% endif %}
                             </td>
-                            <td colspan="{{ 4 if is_admin else 3 }}"></td>
+                            <td colspan="{{ 6 if is_admin else 5 }}"></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -322,6 +333,14 @@
                         <label class="form-label small text-muted">金额 *</label>
                         <input type="number" class="form-control" id="fuAmount" step="0.01" placeholder="0.00">
                     </div>
+                    <div class="col-md-4" id="fuRateRow">
+                        <label class="form-label small text-muted">汇率（U→CNY）</label>
+                        <input type="number" class="form-control" id="fuRate" step="0.0001" placeholder="如 6.83">
+                    </div>
+                    <div class="col-md-4" id="fuCnyRow">
+                        <label class="form-label small text-muted">CNY折算</label>
+                        <input type="text" class="form-control" id="fuCnyCalc" readonly placeholder="自动计算">
+                    </div>
                     <div class="col-12">
                         <label class="form-label small text-muted">用途说明 *</label>
                         <textarea class="form-control" id="fuDescription" rows="2"></textarea>
@@ -363,6 +382,25 @@ function _fuResetOcr() {
     document.getElementById('fuSingleForm').style.display = '';
     document.getElementById('fuSingleFooter').style.display = '';
 }
+function _fuUpdateCnyCalc() {
+    const cur = document.getElementById('fuCurrency').value;
+    const amt = parseFloat(document.getElementById('fuAmount').value) || 0;
+    const rate = parseFloat(document.getElementById('fuRate').value) || 0;
+    const rateRow = document.getElementById('fuRateRow');
+    const cnyRow = document.getElementById('fuCnyRow');
+    if (cur === 'U') {
+        rateRow.style.display = ''; cnyRow.style.display = '';
+        document.getElementById('fuCnyCalc').value = (amt && rate) ? 'CNY ' + (amt * rate).toFixed(0) : '';
+    } else {
+        rateRow.style.display = 'none'; cnyRow.style.display = 'none';
+        document.getElementById('fuRate').value = '';
+        document.getElementById('fuCnyCalc').value = '';
+    }
+}
+document.getElementById('fuCurrency').addEventListener('change', _fuUpdateCnyCalc);
+document.getElementById('fuAmount').addEventListener('input', _fuUpdateCnyCalc);
+document.getElementById('fuRate').addEventListener('input', _fuUpdateCnyCalc);
+
 window.openAdd = function() {
     document.getElementById('fuModalTitle').textContent = '新增资金使用登记';
     document.getElementById('fuId').value = '';
@@ -370,24 +408,49 @@ window.openAdd = function() {
     document.getElementById('fuCategory').value = '办公室费用';
     _fuOnCategoryChange();
     document.getElementById('fuOperator').value = _fuUname;
-    ['fuAmount','fuDescription','fuRemarks'].forEach(id => document.getElementById(id).value = '');
+    ['fuAmount','fuDescription','fuRemarks','fuRate','fuCnyCalc'].forEach(id => document.getElementById(id).value = '');
+    _fuUpdateCnyCalc();
     _fuResetOcr();
     bootstrap.Modal.getOrCreateInstance(document.getElementById('fuModal')).show();
 };
+window.editUsage = function(id) {
+    fetch('/api/finance/fundusage/' + id)
+        .then(r => r.json()).then(resp => {
+            if (!resp.success) { _alert(resp.message); return; }
+            const d = resp.data;
+            document.getElementById('fuModalTitle').textContent = '编辑资金使用登记';
+            document.getElementById('fuId').value = id;
+            document.getElementById('fuMonth').value = d.usageMonth || '';
+            document.getElementById('fuCategory').value = d.category || '其他';
+            document.getElementById('fuCurrency').value = d.currency || 'CNY';
+            document.getElementById('fuAmount').value = d.amount || '';
+            document.getElementById('fuRate').value = d.exchangeRate || '';
+            document.getElementById('fuDescription').value = d.description || '';
+            document.getElementById('fuOperator').value = d.operator || '';
+            document.getElementById('fuRemarks').value = d.remarks || '';
+            _fuUpdateCnyCalc();
+            _fuResetOcr();
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('fuModal')).show();
+        });
+};
 window.saveUsage = function() {
+    const id = document.getElementById('fuId').value;
     const body = {
-        usageMonth:  document.getElementById('fuMonth').value,
-        currency:    document.getElementById('fuCurrency').value,
-        amount:      document.getElementById('fuAmount').value || null,
-        category:    document.getElementById('fuCategory').value,
-        description: document.getElementById('fuDescription').value,
-        operator:    document.getElementById('fuOperator').value || _fuUname,
-        remarks:     document.getElementById('fuRemarks').value,
+        usageMonth:   document.getElementById('fuMonth').value,
+        currency:     document.getElementById('fuCurrency').value,
+        amount:       document.getElementById('fuAmount').value || null,
+        exchangeRate: document.getElementById('fuRate').value || null,
+        category:     document.getElementById('fuCategory').value,
+        description:  document.getElementById('fuDescription').value,
+        operator:     document.getElementById('fuOperator').value || _fuUname,
+        remarks:      document.getElementById('fuRemarks').value,
     };
     if (!body.description) { _alert('用途说明不能为空'); return; }
     if (!body.amount)       { _alert('金额不能为空'); return; }
-    fetch('/api/finance/fundusage', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? '/api/finance/fundusage/' + id : '/api/finance/fundusage';
+    fetch(url, {
+        method, headers: {'Content-Type':'application/json'},
         body: JSON.stringify(body)
     }).then(r => r.json()).then(resp => {
         if (resp.success) {
