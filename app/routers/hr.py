@@ -71,22 +71,21 @@ def _decode_qr(content: bytes) -> str | None:
     except Exception as e:
         logger.warning("QR decode failed (cv2): %s", e)
 
-    # Fallback: use Gemini vision to read QR code content
+    # Fallback: use Gemini REST API to read QR code content
     try:
-        import io
+        import base64, requests
         from app.config import GEMINI_API_KEY
         if not GEMINI_API_KEY:
             return None
-        import google.generativeai as genai
-        from PIL import Image as PILImage
-        genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        img = PILImage.open(io.BytesIO(content))
-        response = model.generate_content([
-            img,
-            "这是一张包含二维码的图片。请识别二维码内容，只返回二维码解码后的纯文本（通常是一个钱包地址），不要任何解释。如果无法识别，返回空。"
-        ])
-        text = (response.text or "").strip()
+        b64 = base64.b64encode(content).decode()
+        payload = {"contents": [{"parts": [
+            {"inline_data": {"mime_type": "image/jpeg", "data": b64}},
+            {"text": "这是一张包含二维码的图片。请识别二维码内容，只返回二维码解码后的纯文本（通常是一个钱包地址），不要任何解释。如果无法识别，返回空。"}
+        ]}]}
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+        resp = requests.post(url, json=payload, timeout=30)
+        resp.raise_for_status()
+        text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
         if text and len(text) > 5:
             return text
         return None

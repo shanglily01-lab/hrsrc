@@ -19,6 +19,27 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
+def _gemini_vision(image_bytes: bytes, mime_type: str, prompt: str) -> str:
+    """Call Gemini REST API with an image. Returns response text or raises."""
+    import base64, json, requests
+    from app.config import GEMINI_API_KEY
+    if not GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY not configured")
+    b64 = base64.b64encode(image_bytes).decode()
+    payload = {
+        "contents": [{
+            "parts": [
+                {"inline_data": {"mime_type": mime_type, "data": b64}},
+                {"text": prompt}
+            ]
+        }]
+    }
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    resp = requests.post(url, json=payload, timeout=30)
+    resp.raise_for_status()
+    return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+
 def _user(request: Request, db: Session) -> User | None:
     uid = request.session.get("user_id")
     if not uid:
@@ -701,24 +722,15 @@ async def ocr_expense(file: UploadFile = File(...)):
                   message="图片已上传，未配置 GEMINI_API_KEY，请手动填写金额")
 
     try:
-        import json, re, io
-        import google.generativeai as genai
-        from PIL import Image as PILImage
-
-        genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        img = PILImage.open(io.BytesIO(content))
-
-        response = model.generate_content([
-            img,
+        import json, re
+        media_type = f"image/{'jpeg' if ext in ('jpg', 'jpeg') else ext}"
+        text = _gemini_vision(content, media_type,
             "这是一张报销凭证图片，可能包含一条或多条报销项目。\n"
             "请识别所有报销项目，只返回JSON数组格式，不要任何解释：\n"
             "[{\"amount\": <数字或null>, \"currency\": \"CNY或USD或U\", \"description\": \"<简短描述>\"}]\n"
             "amount只返回纯数字（不含货币符号）。如果看不清或无法识别，对应字段返回null。\n"
             "如果图片中只有一条报销记录，数组只含一个元素。"
-        ])
-
-        text = response.text.strip()
+        ).strip()
         m = re.search(r'\[.*\]', text, re.DOTALL)
         items = json.loads(m.group()) if m else []
         if not items:
@@ -1319,29 +1331,21 @@ async def ocr_fundusage(file: UploadFile = File(...)):
                   message="图片已上传，未配置 GEMINI_API_KEY，请手动填写")
 
     try:
-        import json, re, io
-        import google.generativeai as genai
-        from PIL import Image as PILImage
-
-        genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        img = PILImage.open(io.BytesIO(content))
-
-        response = model.generate_content([
-            img,
+        import json, re
+        media_type = f"image/{'jpeg' if ext in ('jpg', 'jpeg') else ext}"
+        response_text = _gemini_vision(content, media_type,
             "这是一张资金使用凭证图片，可能包含一条或多条支出记录。\n"
             "请识别所有支出项目，只返回JSON数组格式，不要任何解释：\n"
             "[{\"amount\": <数字或null>, \"currency\": \"U或RMB\", "
             "\"category\": \"薪资/运营/推广/报销/其他\", \"description\": \"<简短描述>\"}]\n"
             "amount只返回纯数字（不含货币符号）。如果看不清，对应字段返回null。\n"
             "如果只有一条记录，数组只含一个元素。"
-        ])
+        )
 
-        text = response.text.strip()
-        m = re.search(r'\[.*\]', text, re.DOTALL)
+        m = re.search(r'\[.*\]', response_text, re.DOTALL)
         items = json.loads(m.group()) if m else []
         if not items:
-            m2 = re.search(r'\{.*\}', text, re.DOTALL)
+            m2 = re.search(r'\{.*\}', response_text, re.DOTALL)
             if m2:
                 items = [json.loads(m2.group())]
 
