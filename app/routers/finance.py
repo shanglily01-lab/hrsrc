@@ -130,7 +130,9 @@ def _parse_salary_num(val: str) -> str:
 @router.get("/finance/employees", response_class=HTMLResponse)
 def page_employees(request: Request, keyword: str = "", db: Session = Depends(get_db)):
     user = _user(request, db)
-    if not user or not is_finance(user):
+    if not user:
+        return RedirectResponse("/login")
+    if not is_finance(user):
         return HTMLResponse("无权访问", status_code=403)
     if keyword:
         rows = db.query(FinEmployee).filter(
@@ -155,7 +157,9 @@ def page_employees(request: Request, keyword: str = "", db: Session = Depends(ge
 @router.get("/finance/salary", response_class=HTMLResponse)
 def page_salary(request: Request, year: str = "", month: str = "", db: Session = Depends(get_db)):
     user = _user(request, db)
-    if not user or not is_finance(user):
+    if not user:
+        return RedirectResponse("/login")
+    if not is_finance(user):
         return HTMLResponse("无权访问", status_code=403)
 
     years = [r[0] for r in db.execute(text(
@@ -230,7 +234,9 @@ def page_expenses(request: Request, status: str = "", db: Session = Depends(get_
 @router.get("/finance/expenseslist", response_class=HTMLResponse)
 def page_expenses_list(request: Request, db: Session = Depends(get_db)):
     user = _user(request, db)
-    if not user or not is_finance(user):
+    if not user:
+        return RedirectResponse("/login")
+    if not is_finance(user):
         return HTMLResponse("无权访问", status_code=403)
     rows = db.query(FinExpense).order_by(FinExpense.expense_month.desc(), FinExpense.id.desc()).all()
     # group by expense_month, fall back to expense_date month
@@ -249,7 +255,9 @@ def page_expenses_list(request: Request, db: Session = Depends(get_db)):
 @router.get("/finance/funds", response_class=HTMLResponse)
 def page_funds(request: Request, period: str = "", db: Session = Depends(get_db)):
     user = _user(request, db)
-    if not user or not is_finance(user):
+    if not user:
+        return RedirectResponse("/login")
+    if not is_finance(user):
         return HTMLResponse("无权访问", status_code=403)
     periods = [r[0] for r in db.execute(text("SELECT DISTINCT period FROM fin_fund_record WHERE period IS NOT NULL ORDER BY id DESC")).fetchall()]
     if period:
@@ -263,7 +271,9 @@ def page_funds(request: Request, period: str = "", db: Session = Depends(get_db)
 def page_reports(request: Request, db: Session = Depends(get_db)):
     """综合报表: salary / expense / fund-request usage analysis."""
     user = _user(request, db)
-    if not user or not is_finance(user):
+    if not user:
+        return RedirectResponse("/login")
+    if not is_finance(user):
         return HTMLResponse("无权访问", status_code=403)
 
     from sqlalchemy import func
@@ -371,7 +381,9 @@ def page_reports(request: Request, db: Session = Depends(get_db)):
 @router.get("/finance/import", response_class=HTMLResponse)
 def page_import(request: Request, db: Session = Depends(get_db)):
     user = _user(request, db)
-    if not user or not is_finance(user):
+    if not user:
+        return RedirectResponse("/login")
+    if not is_finance(user):
         return HTMLResponse("无权访问", status_code=403)
     return templates.TemplateResponse("finance/import.html", {"request": request})
 
@@ -790,7 +802,9 @@ def _fund_dict(r):
 @router.get("/finance/fundrequest", response_class=HTMLResponse)
 def page_fundrequest(request: Request, db: Session = Depends(get_db)):
     user = _user(request, db)
-    if not user or not is_finance(user):
+    if not user:
+        return RedirectResponse("/login")
+    if not is_finance(user):
         return HTMLResponse("无权访问", status_code=403)
     rows = db.query(FinFundRequest).order_by(FinFundRequest.apply_month.desc(), FinFundRequest.id.desc()).all()
     from collections import OrderedDict
@@ -937,7 +951,9 @@ def delete_fundrequest(rid: int, db: Session = Depends(get_db)):
 @router.get("/finance/fundusage", response_class=HTMLResponse)
 def page_fundusage(request: Request, db: Session = Depends(get_db)):
     user = _user(request, db)
-    if not user or not is_finance(user):
+    if not user:
+        return RedirectResponse("/login")
+    if not is_finance(user):
         return HTMLResponse("无权访问", status_code=403)
     from collections import OrderedDict, defaultdict
 
@@ -1011,6 +1027,25 @@ def page_fundusage(request: Request, db: Session = Depends(get_db)):
             usage_by_month[mk]["cny"] += amt
             usage_by_month[mk]["by_cat"][cat]["cny"] += amt
 
+    # 已审批报销（APPROVED）也计入资金消耗
+    approved_exps = db.query(FinExpense).filter(FinExpense.status == "APPROVED").all()
+    total_exp_u = 0.0
+    total_exp_cny = 0.0
+    for e in approved_exps:
+        amt = float(e.amount) if e.amount else 0.0
+        mk = e.expense_month or "未知"
+        cur = e.currency or "CNY"
+        # 报销归入"办公室费用"类别
+        cat = "办公室费用"
+        if cur == "U":
+            usage_by_month[mk]["u"] += amt
+            usage_by_month[mk]["by_cat"][cat]["u"] += amt
+            total_exp_u += amt
+        else:
+            usage_by_month[mk]["cny"] += amt
+            usage_by_month[mk]["by_cat"][cat]["cny"] += amt
+            total_exp_cny += amt
+
     total_fr_rmb = sum(v["rmb"] for v in fr_by_month.values())
 
     # 测试资金/合约部署 按U结算，办公室费用/其他 按CNY结算
@@ -1069,6 +1104,7 @@ def page_fundusage(request: Request, db: Session = Depends(get_db)):
         "cat_summary": cat_summary, "fr_list": fr_list,
         "fr_categories": FR_CATEGORIES,
         "is_admin": is_admin(user), "my_view": False, "uname": user.uname,
+        "total_exp_u": total_exp_u, "total_exp_cny": total_exp_cny,
     })
 
 
@@ -1345,7 +1381,9 @@ def _rp_net(db, month: str, tg_name: str, currency: str) -> tuple:
 @router.get("/finance/rewardpenalty", response_class=HTMLResponse)
 def page_rewardpenalty(request: Request, month: str = "", db: Session = Depends(get_db)):
     user = _user(request, db)
-    if not user or not is_finance(user):
+    if not user:
+        return RedirectResponse("/login")
+    if not is_finance(user):
         return HTMLResponse("无权访问", status_code=403)
     from collections import OrderedDict
     q = db.query(FinRewardPenalty)
@@ -1439,7 +1477,9 @@ DEFAULT_TEAMS = ["web3团队", "AI 团队", "分布式团队"]
 @router.get("/finance/monthlypay", response_class=HTMLResponse)
 def page_monthlypay(request: Request, db: Session = Depends(get_db)):
     user = _user(request, db)
-    if not user or not is_finance(user):
+    if not user:
+        return RedirectResponse("/login")
+    if not is_finance(user):
         return HTMLResponse("无权访问", status_code=403)
     rows = db.query(FinMonthlyPayment).order_by(
         FinMonthlyPayment.month.desc(), FinMonthlyPayment.id.asc()

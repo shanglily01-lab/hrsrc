@@ -640,7 +640,9 @@ DEFAULT_RESET_PWD = "AA@1111"
 @router.get("/admin/resetpwd", response_class=HTMLResponse)
 def page_reset_pwd(request: Request, db: Session = Depends(get_db)):
     user = _user(request, db)
-    if not user or not is_admin(user):
+    if not user:
+        return RedirectResponse("/login")
+    if not is_admin(user):
         return HTMLResponse("无权访问", status_code=403)
     users = db.query(User).order_by(User.id.asc()).all()
     return templates.TemplateResponse("resetpwd.html", {

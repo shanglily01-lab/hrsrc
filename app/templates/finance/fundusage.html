@@ -22,7 +22,7 @@
                     {% if total_fr_u == 0 and total_fr_cny == 0 %}<div class="text-muted">—</div>{% endif %}
                 </div>
                 <div class="col-md-3 col-6">
-                    <div class="text-muted small mb-1">累计使用</div>
+                    <div class="text-muted small mb-1">累计使用（含已报销）</div>
                     {% if total_used_u > 0 %}
                     <div class="fw-bold text-danger">U {{ "%.2f"|format(total_used_u) }}</div>
                     {% endif %}
@@ -30,6 +30,12 @@
                     <div class="fw-bold text-danger">CNY {{ "%.0f"|format(total_used_cny) }}</div>
                     {% endif %}
                     {% if total_used_u == 0 and total_used_cny == 0 %}<div class="text-muted">—</div>{% endif %}
+                    {% if total_exp_u and total_exp_u > 0 %}
+                    <div class="text-muted" style="font-size:.78rem">其中报销 U {{ "%.2f"|format(total_exp_u) }}</div>
+                    {% endif %}
+                    {% if total_exp_cny and total_exp_cny > 0 %}
+                    <div class="text-muted" style="font-size:.78rem">其中报销 CNY {{ "%.0f"|format(total_exp_cny) }}</div>
+                    {% endif %}
                 </div>
                 <div class="col-md-3 col-6">
                     <div class="text-muted small mb-1">当前余额</div>

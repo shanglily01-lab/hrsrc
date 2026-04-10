@@ -1,8 +1,13 @@
+import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from app.config import SECRET_KEY
 from app.database import engine, Base
+
+# 确保上传目录存在
+for _d in ("uploads/expenses", "uploads/fundusage", "uploads/images", "static"):
+    os.makedirs(_d, exist_ok=True)
 from app.routers import auth, pages, finance, hr, projects, leave, announcement, team
 from app.routers import mobile
 
