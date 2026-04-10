@@ -141,7 +141,7 @@
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-currency-dollar"></i></span>
                         <input type="text" class="form-control font-monospace" id="saddr"
-                               value="{{ profile.saddr if profile else (emp.saddr if emp else '') }}"
+                               value="{{ (profile.saddr if profile and profile.saddr else (emp.saddr if emp and emp.saddr else '')) }}"
                                placeholder="USDT TRC20 钱包地址"
                                {{ 'readonly' if not is_admin }}>
                     </div>
@@ -175,7 +175,7 @@
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-wallet2"></i></span>
                         <input type="text" class="form-control font-monospace" id="vaddr"
-                               value="{{ profile.vaddr if profile else (emp.vaddr if emp else '') }}"
+                               value="{{ (profile.vaddr if profile and profile.vaddr else (emp.vaddr if emp and emp.vaddr else '')) }}"
                                placeholder="ERC20 钱包地址"
                                {{ 'readonly' if not is_admin }}>
                     </div>
