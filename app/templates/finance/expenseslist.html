@@ -66,12 +66,20 @@
                             <td class="fw-500">{{ e.amount }}</td>
                             <td class="text-muted">{{ e.currency }}</td>
                             <td>
+                                <div class="d-flex align-items-center gap-1">
                                 {% if e.image_path %}
-                                <img src="{{ e.image_path }}" onclick="showLightbox('{{ e.image_path }}')"
+                                <img src="{{ e.image_path }}" id="expImg{{ e.id }}"
+                                     onclick="showLightbox('{{ e.image_path }}')"
                                      style="height:32px;width:48px;object-fit:cover;border-radius:4px;cursor:zoom-in" title="点击放大">
                                 {% else %}
-                                <span class="text-muted" style="font-size:.75rem">—</span>
+                                <span class="text-muted" id="expImg{{ e.id }}" style="font-size:.75rem">—</span>
                                 {% endif %}
+                                <label class="btn btn-link btn-sm p-0 text-muted" title="上传/替换凭证" style="line-height:1">
+                                    <i class="bi bi-upload" style="font-size:.8rem"></i>
+                                    <input type="file" accept="image/*" style="display:none"
+                                           onchange="uploadExpImg({{ e.id }}, this)">
+                                </label>
+                                </div>
                             </td>
                             <td>
                                 <span class="badge rounded-pill
@@ -126,5 +134,30 @@ window.delExp = function(id) {
         fetch('/api/finance/expenses/' + id, {method:'DELETE'})
             .then(r => r.json()).then(resp => { if (resp.success) loadContent('/finance/expenseslist'); else _alert(resp.message); });
     }, true);
+};
+window.uploadExpImg = function(id, input) {
+    const f = input.files[0];
+    if (!f) return;
+    const fd = new FormData();
+    fd.append('file', f);
+    fetch('/api/finance/expenses/' + id + '/image', {method:'POST', body:fd})
+        .then(r => r.json()).then(resp => {
+            if (!resp.success) { _alert(resp.message); return; }
+            const url = resp.data.imagePath;
+            const cell = document.getElementById('expImg' + id);
+            if (cell && cell.tagName === 'SPAN') {
+                const img = document.createElement('img');
+                img.src = url;
+                img.id = 'expImg' + id;
+                img.onclick = () => showLightbox(url);
+                img.style.cssText = 'height:32px;width:48px;object-fit:cover;border-radius:4px;cursor:zoom-in';
+                img.title = '点击放大';
+                cell.replaceWith(img);
+            } else if (cell) {
+                cell.src = url;
+                cell.onclick = () => showLightbox(url);
+            }
+            input.value = '';
+        });
 };
 </script>

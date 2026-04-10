@@ -682,6 +682,27 @@ def delete_expense(eid: int, db: Session = Depends(get_db)):
     return ok()
 
 
+@router.post("/api/finance/expenses/{eid}/image")
+async def upload_expense_image(eid: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """为指定报销记录补传/替换凭证图片。"""
+    import uuid
+    e = db.query(FinExpense).filter(FinExpense.id == eid).first()
+    if not e:
+        return err("记录不存在")
+    content = await file.read()
+    ext = (file.filename or "img.jpg").rsplit(".", 1)[-1].lower()
+    if ext not in ("jpg", "jpeg", "png", "gif", "webp"):
+        return err("不支持的图片格式，请上传 jpg/png/webp")
+    fname = f"{uuid.uuid4().hex}.{ext}"
+    fpath = os.path.join("uploads", "expenses", fname)
+    with open(fpath, "wb") as f:
+        f.write(content)
+    e.image_path = f"/uploads/expenses/{fname}"
+    e.updated_at = now_str()
+    db.commit()
+    return ok(data={"imagePath": e.image_path})
+
+
 def _exp_fields(b):
     return {"category": b.get("category"), "description": b.get("description"),
             "amount": to_decimal(b.get("amount")), "currency": b.get("currency"),
