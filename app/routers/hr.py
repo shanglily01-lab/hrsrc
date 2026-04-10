@@ -73,20 +73,19 @@ def _decode_qr(content: bytes) -> str | None:
 
     # Fallback: use Gemini vision to read QR code content
     try:
+        import io
         from app.config import GEMINI_API_KEY
         if not GEMINI_API_KEY:
             return None
-        from google import genai
-        from google.genai import types
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        ext = "jpeg"
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[
-                types.Part.from_bytes(data=content, mime_type=f"image/{ext}"),
-                "这是一张包含二维码的图片。请识别二维码内容，只返回二维码解码后的纯文本（通常是一个钱包地址），不要任何解释。如果无法识别，返回空。"
-            ]
-        )
+        import google.generativeai as genai
+        from PIL import Image as PILImage
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        img = PILImage.open(io.BytesIO(content))
+        response = model.generate_content([
+            img,
+            "这是一张包含二维码的图片。请识别二维码内容，只返回二维码解码后的纯文本（通常是一个钱包地址），不要任何解释。如果无法识别，返回空。"
+        ])
         text = (response.text or "").strip()
         if text and len(text) > 5:
             return text

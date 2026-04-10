@@ -701,29 +701,26 @@ async def ocr_expense(file: UploadFile = File(...)):
                   message="图片已上传，未配置 GEMINI_API_KEY，请手动填写金额")
 
     try:
-        import json, re
-        from google import genai
-        from google.genai import types
+        import json, re, io
+        import google.generativeai as genai
+        from PIL import Image as PILImage
 
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        media_type = f"image/{'jpeg' if ext in ('jpg', 'jpeg') else ext}"
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        img = PILImage.open(io.BytesIO(content))
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[
-                types.Part.from_bytes(data=content, mime_type=media_type),
-                "这是一张报销凭证图片，可能包含一条或多条报销项目。\n"
-                "请识别所有报销项目，只返回JSON数组格式，不要任何解释：\n"
-                "[{\"amount\": <数字或null>, \"currency\": \"CNY或USD或U\", \"description\": \"<简短描述>\"}]\n"
-                "amount只返回纯数字（不含货币符号）。如果看不清或无法识别，对应字段返回null。\n"
-                "如果图片中只有一条报销记录，数组只含一个元素。"
-            ]
-        )
+        response = model.generate_content([
+            img,
+            "这是一张报销凭证图片，可能包含一条或多条报销项目。\n"
+            "请识别所有报销项目，只返回JSON数组格式，不要任何解释：\n"
+            "[{\"amount\": <数字或null>, \"currency\": \"CNY或USD或U\", \"description\": \"<简短描述>\"}]\n"
+            "amount只返回纯数字（不含货币符号）。如果看不清或无法识别，对应字段返回null。\n"
+            "如果图片中只有一条报销记录，数组只含一个元素。"
+        ])
 
         text = response.text.strip()
         m = re.search(r'\[.*\]', text, re.DOTALL)
         items = json.loads(m.group()) if m else []
-        # Fallback: try single-object format
         if not items:
             m2 = re.search(r'\{.*\}', text, re.DOTALL)
             if m2:
@@ -1322,25 +1319,23 @@ async def ocr_fundusage(file: UploadFile = File(...)):
                   message="图片已上传，未配置 GEMINI_API_KEY，请手动填写")
 
     try:
-        import json, re
-        from google import genai
-        from google.genai import types
+        import json, re, io
+        import google.generativeai as genai
+        from PIL import Image as PILImage
 
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        media_type = f"image/{'jpeg' if ext in ('jpg', 'jpeg') else ext}"
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        img = PILImage.open(io.BytesIO(content))
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[
-                types.Part.from_bytes(data=content, mime_type=media_type),
-                "这是一张资金使用凭证图片，可能包含一条或多条支出记录。\n"
-                "请识别所有支出项目，只返回JSON数组格式，不要任何解释：\n"
-                "[{\"amount\": <数字或null>, \"currency\": \"U或RMB\", "
-                "\"category\": \"薪资/运营/推广/报销/其他\", \"description\": \"<简短描述>\"}]\n"
-                "amount只返回纯数字（不含货币符号）。如果看不清，对应字段返回null。\n"
-                "如果只有一条记录，数组只含一个元素。"
-            ]
-        )
+        response = model.generate_content([
+            img,
+            "这是一张资金使用凭证图片，可能包含一条或多条支出记录。\n"
+            "请识别所有支出项目，只返回JSON数组格式，不要任何解释：\n"
+            "[{\"amount\": <数字或null>, \"currency\": \"U或RMB\", "
+            "\"category\": \"薪资/运营/推广/报销/其他\", \"description\": \"<简短描述>\"}]\n"
+            "amount只返回纯数字（不含货币符号）。如果看不清，对应字段返回null。\n"
+            "如果只有一条记录，数组只含一个元素。"
+        ])
 
         text = response.text.strip()
         m = re.search(r'\[.*\]', text, re.DOTALL)
