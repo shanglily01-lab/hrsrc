@@ -1809,27 +1809,21 @@ def batch_mark_paid(month: str, db: Session = Depends(get_db)):
 
 @router.post("/api/finance/salary/reset-and-regenerate/{month}")
 def reset_and_regenerate_salary(month: str, request: Request, db: Session = Depends(get_db)):
-    """删除指定月份的薪资记录（source=monthly_pay），重置月度发放状态为UNPAID，重新生成。"""
+    """删除指定月份薪资记录（source=monthly_pay），直接从月度发放数据重新生成。"""
     user = _user(request, db)
     if not user:
         return err("未登录")
     if not is_finance(user):
         return err("无权限")
 
-    # 1. 删除该月薪资记录（仅 monthly_pay 来源）
+    # 1. 删除该月薪资记录
     deleted = db.query(FinSalaryRecord).filter(
         FinSalaryRecord.month == month,
         FinSalaryRecord.source == "monthly_pay",
     ).delete()
-
-    # 2. 重置月度发放为 UNPAID
-    db.query(FinMonthlyPayment).filter(
-        FinMonthlyPayment.month == month,
-    ).update({"status": "UNPAID", "updated_at": now_str()})
-
     db.commit()
 
-    # 3. 重新批量确认生成
+    # 2. 从月度发放数据直接生成（不改动月度发放状态）
     records = db.query(FinMonthlyPayment).filter(
         FinMonthlyPayment.month == month,
     ).all()
@@ -1838,9 +1832,6 @@ def reset_and_regenerate_salary(month: str, request: Request, db: Session = Depe
 
     synced = 0
     for r in records:
-        r.status = "PAID"
-        r.updated_at = now_str()
-
         year_label = r.month[:4] if r.month and len(r.month) >= 4 else None
         emp = db.query(FinEmployee).filter(FinEmployee.tg_name == r.tg_name).first()
         if not r.wallet_address:
