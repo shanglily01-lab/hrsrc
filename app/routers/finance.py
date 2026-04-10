@@ -1760,6 +1760,11 @@ def batch_mark_paid(month: str, db: Session = Depends(get_db)):
     if not records:
         return err("该月无待付记录")
 
+    # 校验：所有记录必须填写汇率
+    missing_rate = [r.tg_name for r in records if not r.exchange_rate]
+    if missing_rate:
+        return err(f"以下人员未填写汇率，请先填写后再操作：{', '.join(missing_rate)}")
+
     synced = 0
     for r in records:
         r.status = "PAID"
@@ -1851,6 +1856,11 @@ def reset_and_regenerate_salary(month: str, request: Request, db: Session = Depe
     ).all()
     if not records:
         return err(f"月度发放里没有 {month} 的记录")
+
+    # 校验：所有记录必须填写汇率
+    missing_rate = [r.tg_name for r in records if not r.exchange_rate]
+    if missing_rate:
+        return err(f"以下人员未填写汇率，请先填写后再操作：{', '.join(missing_rate)}")
 
     synced = 0
     for r in records:
