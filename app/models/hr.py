@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy import Column, Integer, String, Text, DateTime
 from app.database import Base
 
 
@@ -57,7 +57,8 @@ class Announcement(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String(300))
     content = Column(Text)
-    publish_date = Column(String(50))
-    publisher_id = Column(Integer)
-    publisher_name = Column(String(100))
+    # Java 原表为驼峰列名；另有空的 snake_case 列是后来误加的，不能用
+    publish_date = Column("publishDate", DateTime)
+    publisher_id = Column("publisherId", Integer)
+    publisher_name = Column("publisherName", String(100))
     status = Column(String(20))

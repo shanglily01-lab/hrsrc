@@ -31,7 +31,7 @@
                     <span class="badge rounded-pill {{ 'bg-success' if a.status == 'PUBLISHED' else ('bg-secondary' if a.status == 'ARCHIVED' else 'bg-warning text-dark') }}">
                         {{ '已发布' if a.status == 'PUBLISHED' else ('已归档' if a.status == 'ARCHIVED' else '草稿') }}
                     </span>
-                    <span class="text-muted small">{{ a.publisher_name }} · {{ a.created_at }}</span>
+                    <span class="text-muted small">{{ a.publisher_name or '' }}{% if a.publisher_name and a.publish_date %} · {% endif %}{{ a.publish_date.strftime('%Y-%m-%d %H:%M') if a.publish_date else '' }}</span>
                     {% if is_admin %}
                     <button class="btn btn-sm btn-outline-primary py-0 px-1" onclick="openEdit({{ a.id }})"><i class="bi bi-pencil"></i></button>
                     {% if a.status != 'PUBLISHED' %}<button class="btn btn-sm btn-outline-success py-0 px-1" onclick="publishAnn({{ a.id }})"><i class="bi bi-send"></i></button>{% endif %}
@@ -57,7 +57,7 @@
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-1 flex-shrink-0 ms-2">
-                    <span class="text-muted" style="font-size:.75rem">{{ a.created_at }}</span>
+                    <span class="text-muted" style="font-size:.75rem">{{ a.publish_date.strftime('%Y-%m-%d %H:%M') if a.publish_date else '' }}</span>
                     <span class="badge rounded-pill {{ 'bg-success' if a.status == 'PUBLISHED' else ('bg-secondary' if a.status == 'ARCHIVED' else 'bg-warning text-dark') }}" style="font-size:.7rem">
                         {{ '已发布' if a.status == 'PUBLISHED' else ('已归档' if a.status == 'ARCHIVED' else '草稿') }}
                     </span>
@@ -101,6 +101,13 @@
 </div>
 <script>
 const annModal = new bootstrap.Modal(document.getElementById('annModal'));
+function _annReq(url, opts) {
+    return fetch(url, opts).then(async r => {
+        const resp = await r.json().catch(() => null);
+        if (!resp) return { success: false, message: '服务器错误 (' + r.status + ')' };
+        return resp;
+    }).catch(() => ({ success: false, message: '请求失败' }));
+}
 window.openAdd = function() {
     document.getElementById('annTitle').textContent='新增公告';
     document.getElementById('annId').value='';
@@ -109,7 +116,8 @@ window.openAdd = function() {
     annModal.show();
 };
 window.openEdit = function(id) {
-    fetch('/api/announcements/'+id).then(r=>r.json()).then(resp=>{
+    _annReq('/api/announcements/'+id).then(resp=>{
+        if(!resp.success){_alert(resp.message);return;}
         const a=resp.data;
         document.getElementById('annTitle').textContent='编辑公告';
         document.getElementById('annId').value=a.id;
@@ -122,11 +130,11 @@ window.saveAnn = function() {
     const id=document.getElementById('annId').value;
     const body={title:document.getElementById('annTitleInput').value, content:document.getElementById('annContent').value};
     if(!body.title){_alert('标题不能为空');return;}
-    fetch(id?'/api/announcements/'+id:'/api/announcements/create',{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-        .then(r=>r.json()).then(resp=>{if(resp.success){annModal.hide();loadContent('/announcement/list');}else _alert(resp.message);});
+    _annReq(id?'/api/announcements/'+id:'/api/announcements/create',{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+        .then(resp=>{if(resp.success){annModal.hide();loadContent('/announcement/list');}else _alert(resp.message);});
 };
-window.publishAnn = function(id) { _confirm('确认发布？', function() { fetch('/api/announcements/'+id+'/publish',{method:'PUT'}).then(r=>r.json()).then(resp=>{if(resp.success)loadContent('/announcement/list');}); }); };
-window.archiveAnn = function(id) { _confirm('确认归档？', function() { fetch('/api/announcements/'+id+'/archive',{method:'PUT'}).then(r=>r.json()).then(resp=>{if(resp.success)loadContent('/announcement/list');}); }); };
-window.delAnn = function(id) { _confirm('确认删除？', function() { fetch('/api/announcements/'+id,{method:'DELETE'}).then(r=>r.json()).then(resp=>{if(resp.success)loadContent('/announcement/list');}); }, true); };
+window.publishAnn = function(id) { _confirm('确认发布？', function() { _annReq('/api/announcements/'+id+'/publish',{method:'PUT'}).then(resp=>{if(resp.success)loadContent('/announcement/list');else _alert(resp.message);}); }); };
+window.archiveAnn = function(id) { _confirm('确认归档？', function() { _annReq('/api/announcements/'+id+'/archive',{method:'PUT'}).then(resp=>{if(resp.success)loadContent('/announcement/list');else _alert(resp.message);}); }); };
+window.delAnn = function(id) { _confirm('确认删除？', function() { _annReq('/api/announcements/'+id,{method:'DELETE'}).then(resp=>{if(resp.success)loadContent('/announcement/list');else _alert(resp.message);}); }, true); };
 </script>
 {% endif %}

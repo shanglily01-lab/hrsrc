@@ -1,5 +1,4 @@
 from __future__ import annotations
-from datetime import datetime
 from app.config import now_cst
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -19,10 +18,6 @@ def _user(request: Request, db: Session) -> User | None:
     if not uid:
         return None
     return db.query(User).filter(User.id == uid).first()
-
-
-def now_str():
-    return now_cst().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def ok(data=None, msg="success"):
@@ -56,58 +51,109 @@ def get_ann(aid: int, db: Session = Depends(get_db)):
     return ok(_ann_dict(a)) if a else err("不存在")
 
 
+def _safe(db: Session, fn):
+    try:
+        return fn()
+    except Exception as e:
+        db.rollback()
+        return err(str(e) or "服务器内部错误")
+
+
 @router.post("/api/announcements/create")
 async def create_ann(request: Request, db: Session = Depends(get_db)):
     user = _user(request, db)
     if not user:
         return err("未登录")
     body = await request.json()
-    a = Announcement(title=body.get("title"), content=body.get("content"), status="DRAFT",
-                     publisher_id=user.id, publisher_name=user.uname,
-                     created_at=now_str(), updated_at=now_str())
-    db.add(a)
-    db.commit()
-    return ok()
+    title = (body.get("title") or "").strip()
+    if not title:
+        return err("标题不能为空")
+
+    def _do():
+        a = Announcement(
+            title=title,
+            content=body.get("content"),
+            status="DRAFT",
+            publisher_id=user.id,
+            publisher_name=user.uname,
+        )
+        db.add(a)
+        db.commit()
+        return ok()
+
+    return _safe(db, _do)
 
 
 @router.put("/api/announcements/{aid}")
 async def update_ann(aid: int, request: Request, db: Session = Depends(get_db)):
     body = await request.json()
-    a = db.query(Announcement).filter(Announcement.id == aid).first()
-    if not a:
-        return err("不存在")
-    a.title = body.get("title")
-    a.content = body.get("content")
-    a.updated_at = now_str()
-    db.commit()
-    return ok()
+
+    def _do():
+        a = db.query(Announcement).filter(Announcement.id == aid).first()
+        if not a:
+            return err("不存在")
+        title = (body.get("title") or "").strip()
+        if not title:
+            return err("标题不能为空")
+        a.title = title
+        a.content = body.get("content")
+        db.commit()
+        return ok()
+
+    return _safe(db, _do)
 
 
 @router.put("/api/announcements/{aid}/publish")
 def publish_ann(aid: int, db: Session = Depends(get_db)):
-    a = db.query(Announcement).filter(Announcement.id == aid).first()
-    if a:
-        a.status = "PUBLISHED"; a.publish_date = now_str()[:10]; a.updated_at = now_str()
-        db.commit()
-    return ok()
+    def _do():
+        a = db.query(Announcement).filter(Announcement.id == aid).first()
+        if a:
+            a.status = "PUBLISHED"
+            a.publish_date = now_cst()
+            db.commit()
+        return ok()
+
+    return _safe(db, _do)
 
 
 @router.put("/api/announcements/{aid}/archive")
 def archive_ann(aid: int, db: Session = Depends(get_db)):
-    a = db.query(Announcement).filter(Announcement.id == aid).first()
-    if a:
-        a.status = "ARCHIVED"; a.updated_at = now_str()
-        db.commit()
-    return ok()
+    def _do():
+        a = db.query(Announcement).filter(Announcement.id == aid).first()
+        if a:
+            a.status = "ARCHIVED"
+            db.commit()
+        return ok()
+
+    return _safe(db, _do)
 
 
 @router.delete("/api/announcements/{aid}")
 def delete_ann(aid: int, db: Session = Depends(get_db)):
-    db.query(Announcement).filter(Announcement.id == aid).delete()
-    db.commit()
-    return ok()
+    def _do():
+        db.query(Announcement).filter(Announcement.id == aid).delete()
+        db.commit()
+        return ok()
+
+    return _safe(db, _do)
+
+
+def _fmt_dt(v):
+    if v is None:
+        return None
+    if hasattr(v, "strftime"):
+        return v.strftime("%Y-%m-%d %H:%M:%S")
+    return str(v)
 
 
 def _ann_dict(a):
-    return {"id": a.id, "title": a.title, "content": a.content, "status": a.status,
-            "publishDate": a.publish_date, "publisherName": a.publisher_name, "createdAt": a.created_at}
+    published = _fmt_dt(a.publish_date)
+    return {
+        "id": a.id,
+        "title": a.title,
+        "content": a.content,
+        "status": a.status,
+        "publishDate": published,
+        "publisherName": a.publisher_name,
+        "createdAt": published,
+    }
