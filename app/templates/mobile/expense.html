@@ -28,6 +28,7 @@
   <div class="card" style="margin-bottom:12px">
     <div class="card-label"><span class="material-symbols-outlined">category</span>默认类别</div>
     <select id="expCategory">
+      <option value="办公费" selected>办公费</option>
       <option value="餐饮">餐饮</option>
       <option value="交通">交通</option>
       <option value="住宿">住宿</option>
@@ -121,7 +122,7 @@
 let imagePath = null;
 let itemIdx = 0;
 
-const CATEGORIES = ['餐饮','交通','住宿','办公用品','通讯','其他'];
+const CATEGORIES = ['办公费','餐饮','交通','住宿','办公用品','通讯','其他'];
 const CURRENCIES = ['CNY','USD','U'];
 
 function catOptions(sel) {
@@ -139,7 +140,7 @@ function buildItemRow(it) {
       <span class="material-symbols-outlined">close</span>
     </button>
     <label>类别</label>
-    <select class="it-cat">${catOptions(it.category||'其他')}</select>
+    <select class="it-cat">${catOptions(it.category||'办公费')}</select>
     <label>货币 / 金额 *</label>
     <div style="display:flex;gap:6px">
       <select class="it-cur" style="width:80px;flex-shrink:0">${curOptions(it.currency||'CNY')}</select>

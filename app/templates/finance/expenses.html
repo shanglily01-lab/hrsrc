@@ -153,6 +153,7 @@
                 <div class="col-md-4">
                     <label class="form-label small text-muted">类别</label>
                     <select class="form-select" id="expCategory">
+                        <option value="办公费" selected>办公费</option>
                         <option value="差旅">差旅</option>
                         <option value="餐饮">餐饮</option>
                         <option value="办公">办公</option>
@@ -332,7 +333,7 @@ window.submitBatch = function() {
         if (!amount) { _alert('金额不能为空'); valid = false; return; }
         items.push({
             expenseMonth: month,
-            category: '其他',
+            category: '办公费',
             description: desc,
             amount: amount,
             currency: currency,
@@ -372,6 +373,7 @@ window.openAdd = function() {
     _setSelect('expApplicant', "{{ uname }}");
     document.getElementById('expMonth').value = lastMonth();
     document.getElementById('expCurrency').value = 'CNY';
+    document.getElementById('expCategory').value = '办公费';
     bootstrap.Modal.getOrCreateInstance(document.getElementById('expModal')).show();
 };
 window.openEdit = function(id) {
@@ -380,7 +382,7 @@ window.openEdit = function(id) {
         document.getElementById('expModalTitle').textContent = '编辑报销';
         document.getElementById('expId').value = e.id || '';
         document.getElementById('expMonth').value = e.expenseMonth || '';
-        document.getElementById('expCategory').value = e.category || '差旅';
+        document.getElementById('expCategory').value = e.category || '办公费';
         _setSelect('expApplicant', e.applicant || '');
         document.getElementById('expDesc').value = e.description || '';
         document.getElementById('expAmount').value = e.amount || '';
