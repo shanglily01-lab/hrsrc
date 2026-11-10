@@ -37,7 +37,7 @@ def is_admin(user: User) -> bool:
 
 
 # Finance-only users (not full admin, but can access all Finance menu & routes)
-_FINANCE_USER_IDS = {139}  # Jack
+_FINANCE_USER_IDS = {139, 146}  # Jack, Alexty
 
 def is_finance(user: User) -> bool:
     return is_admin(user) or (user is not None and user.id in _FINANCE_USER_IDS)
